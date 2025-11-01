@@ -1,0 +1,20 @@
+accounts:
+  - email: your@email.com
+    imap:
+      user: your@email.com
+      password: your-password
+      host: imap.example.com
+      port: 993
+    smtp:
+      user: your@email.com
+      password: your-password
+      host: smtp.example.com
+      port: 465
+
+  - email: work@company.com
+    imap:
+      password: work-password
+      host: imap.gmail.com
+    smtp:
+      password: work-password
+      host: smtp.gmail.com

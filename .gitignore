@@ -1,0 +1,55 @@
+# Binaries
+vero
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Dependency directories
+vendor/
+
+# Build output
+bin/
+dist/
+build/
+out/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# MacOS
+.DS_Store
+
+# User data directory (local email storage)
+.vero/
+
+# Debug files
+debug
+__debug_bin
+debug-messages.json
+
+# Logs
+logs/
+*.log
+
+# Air (Go live reload tool)
+tmp/
+
+# Code coverage
+coverage/
+*.lcov
