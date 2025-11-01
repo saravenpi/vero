@@ -218,6 +218,12 @@ func (m InboxModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Batch(m.spinner.Tick, m.fetchEmailsCmd())
 			}
 
+		case "r":
+			if m.viewMode == models.ViewList {
+				m.loading = true
+				return m, tea.Batch(m.spinner.Tick, m.fetchEmailsCmd())
+			}
+
 		case "enter":
 			if m.viewMode == models.ViewList && len(m.emails) > 0 {
 				if item, ok := m.list.SelectedItem().(emailItem); ok {
@@ -282,11 +288,11 @@ func (m InboxModel) renderList() string {
 	if len(m.emails) == 0 {
 		s := titleStyle.Render(fmt.Sprintf("Inbox (%s)", m.filter.String())) + "\n\n"
 		s += normalStyle.Render("  No emails found.") + "\n"
-		s += "\n" + helpStyle.Render("u/s/a: filter • esc: back • q: quit")
+		s += "\n" + helpStyle.Render("u/s/a: filter • r: refresh • esc: back • q: quit")
 		return s
 	}
 
-	return m.list.View() + "\n" + helpStyle.Render("↑↓/jk: navigate • enter: read • u/s/a: filter • esc: back • q: quit")
+	return m.list.View() + "\n" + helpStyle.Render("↑↓/jk: navigate • enter: read • u/s/a: filter • r: refresh • esc: back • q: quit")
 }
 
 func (m *InboxModel) updateViewportContent() {
