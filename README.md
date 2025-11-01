@@ -1,4 +1,4 @@
-# Vero
+# 📬 Vero
 
 A fast, beautiful terminal-based email client built with Go and [Charmbracelet](https://github.com/charmbracelet) TUI libraries. Read your emails and compose new ones directly from your terminal with an intuitive interface.
 
