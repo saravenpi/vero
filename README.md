@@ -170,34 +170,6 @@ Vero is built with:
 
 **Note**: For Gmail, you'll need to use an [App Password](https://support.google.com/accounts/answer/185833).
 
-## Project Structure
-
-```
-vero/
-├── main.go                          # Entry point
-├── internal/
-│   ├── config/
-│   │   └── config.go               # Configuration loading (YAML)
-│   ├── email/
-│   │   ├── imap.go                 # IMAP client
-│   │   └── smtp.go                 # SMTP client
-│   ├── models/
-│   │   └── types.go                # Data types
-│   ├── storage/
-│   │   └── storage.go              # YAML storage
-│   └── ui/
-│       ├── account_selection.go   # Account selection view
-│       ├── compose.go              # Email composition view
-│       ├── inbox.go                # Inbox view
-│       ├── menu.go                 # Main menu
-│       ├── sent.go                 # Sent emails view
-│       └── styles.go               # Lip Gloss styles
-├── .vero.example.yml                # Example configuration
-├── go.mod
-├── go.sum
-└── README.md
-```
-
 ## Development
 
 Clone the repository:
