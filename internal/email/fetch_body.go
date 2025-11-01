@@ -8,6 +8,7 @@ import (
 	"github.com/saravenpi/vero/internal/config"
 )
 
+// FetchEmailBody retrieves the full body content of a specific email from the IMAP server.
 func FetchEmailBody(cfg *config.IMAPConfig, from, subject string) (string, error) {
 	c, err := client.DialTLS(fmt.Sprintf("%s:%d", cfg.Host, cfg.Port), nil)
 	if err != nil {

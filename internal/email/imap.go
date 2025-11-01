@@ -13,6 +13,7 @@ import (
 	"github.com/saravenpi/vero/internal/models"
 )
 
+// FetchEmails retrieves emails from the IMAP server based on the specified filter.
 func FetchEmails(cfg *config.IMAPConfig, filter models.InboxFilter) ([]models.Email, error) {
 	c, err := client.DialTLS(fmt.Sprintf("%s:%d", cfg.Host, cfg.Port), nil)
 	if err != nil {

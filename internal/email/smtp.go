@@ -11,6 +11,7 @@ import (
 	"github.com/saravenpi/vero/internal/models"
 )
 
+// SendEmail sends an email using the SMTP server with the provided draft content.
 func SendEmail(cfg *config.SMTPConfig, draft models.EmailDraft) error {
 	to := parseAddresses(draft.To)
 	if draft.CC != "" {

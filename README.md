@@ -20,6 +20,16 @@ A fast, beautiful terminal-based email client built with Go and [Charmbracelet](
 
 ## Installation
 
+### Quick Install
+
+Install Vero with a single command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/saravenpi/vero/master/install.sh | bash
+```
+
+This will install the binary to `~/.local/bin/vero`. Make sure `~/.local/bin` is in your PATH.
+
 ### Build from Source
 
 ```bash
@@ -28,7 +38,7 @@ cd vero
 go build -o vero .
 ```
 
-### Install
+### Manual Install
 
 Move the binary to your PATH:
 
@@ -245,7 +255,9 @@ To completely remove Vero from your system:
 
 ```bash
 rm -rf ~/.vero
-sudo rm /usr/local/bin/vero  # or wherever you installed it
+rm ~/.local/bin/vero  # if installed with install.sh
+# or
+sudo rm /usr/local/bin/vero  # if installed manually
 ```
 
 This will remove the binary and all stored emails/configuration.

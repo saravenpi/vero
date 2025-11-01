@@ -7,12 +7,14 @@ import (
 	"github.com/saravenpi/vero/internal/config"
 )
 
+// AccountSelectionModel handles the account selection screen for multi-account setups.
 type AccountSelectionModel struct {
 	cfg     *config.VeroConfig
 	cursor  int
 	choices []string
 }
 
+// NewAccountSelectionModel creates a new account selection model.
 func NewAccountSelectionModel(cfg *config.VeroConfig) AccountSelectionModel {
 	choices := make([]string, len(cfg.Accounts))
 	for i, account := range cfg.Accounts {

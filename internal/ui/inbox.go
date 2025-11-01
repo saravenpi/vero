@@ -43,6 +43,7 @@ func (i emailItem) Description() string {
 	return i.email.From
 }
 
+// InboxModel manages the inbox view with email list and detail views.
 type InboxModel struct {
 	account      *config.Account
 	emails       []models.Email
@@ -60,6 +61,7 @@ type InboxModel struct {
 	windowHeight int
 }
 
+// NewInboxModel creates a new inbox model for the specified account.
 func NewInboxModel(account *config.Account) InboxModel {
 	s := spinner.New()
 	s.Spinner = spinner.Dot

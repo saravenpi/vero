@@ -31,6 +31,7 @@ type emailSentMsg struct {
 	err error
 }
 
+// ComposeModel manages the email composition workflow through multiple steps.
 type ComposeModel struct {
 	account   *config.Account
 	step      composeStep
@@ -44,6 +45,7 @@ type ComposeModel struct {
 	spinner   spinner.Model
 }
 
+// NewComposeModel creates a new email composition model for the specified account.
 func NewComposeModel(account *config.Account) ComposeModel {
 	ti := textinput.New()
 	ti.Placeholder = "recipient@example.com"

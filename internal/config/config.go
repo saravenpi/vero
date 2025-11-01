@@ -8,16 +8,19 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// VeroConfig represents the main configuration file structure.
 type VeroConfig struct {
 	Accounts []Account `yaml:"accounts"`
 }
 
+// Account represents a single email account configuration.
 type Account struct {
 	Email string     `yaml:"email"`
 	IMAP  IMAPConfig `yaml:"imap"`
 	SMTP  SMTPConfig `yaml:"smtp"`
 }
 
+// IMAPConfig contains IMAP server connection settings.
 type IMAPConfig struct {
 	User     string `yaml:"user"`
 	Password string `yaml:"password"`
@@ -25,6 +28,7 @@ type IMAPConfig struct {
 	Port     int    `yaml:"port"`
 }
 
+// SMTPConfig contains SMTP server connection settings.
 type SMTPConfig struct {
 	User     string `yaml:"user"`
 	Password string `yaml:"password"`
@@ -32,6 +36,7 @@ type SMTPConfig struct {
 	Port     int    `yaml:"port"`
 }
 
+// Load reads and parses the Vero configuration file from ~/.vero.yml.
 func Load() (*VeroConfig, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {

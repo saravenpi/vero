@@ -19,6 +19,7 @@ const (
 	timeFormat = "2006-01-02-150405"
 )
 
+// GetVeroDir returns the path to the Vero data directory in the user's home.
 func GetVeroDir() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -27,6 +28,7 @@ func GetVeroDir() (string, error) {
 	return filepath.Join(home, veroDir), nil
 }
 
+// GetAccountDir returns the path to a specific account's data directory.
 func GetAccountDir(accountEmail string) (string, error) {
 	veroPath, err := GetVeroDir()
 	if err != nil {
@@ -49,6 +51,7 @@ func sanitizeEmail(email string) string {
 	return replacer.Replace(email)
 }
 
+// SaveSeenEmail persists a viewed email to the account's seen directory.
 func SaveSeenEmail(accountEmail string, email models.Email) error {
 	accountPath, err := GetAccountDir(accountEmail)
 	if err != nil {
@@ -77,6 +80,7 @@ func SaveSeenEmail(accountEmail string, email models.Email) error {
 	return os.WriteFile(filePath, data, 0644)
 }
 
+// SaveSentEmail persists a sent email to the account's sent directory.
 func SaveSentEmail(accountEmail string, email models.Email) error {
 	accountPath, err := GetAccountDir(accountEmail)
 	if err != nil {
@@ -143,6 +147,7 @@ func loadEmailsFromDir(dirPath string) ([]models.Email, error) {
 	return emails, nil
 }
 
+// LoadSeenEmails retrieves all viewed emails for the specified account.
 func LoadSeenEmails(accountEmail string) ([]models.Email, error) {
 	accountPath, err := GetAccountDir(accountEmail)
 	if err != nil {
@@ -153,6 +158,7 @@ func LoadSeenEmails(accountEmail string) ([]models.Email, error) {
 	return loadEmailsFromDir(seenPath)
 }
 
+// LoadSentEmails retrieves all sent emails for the specified account.
 func LoadSentEmails(accountEmail string) ([]models.Email, error) {
 	accountPath, err := GetAccountDir(accountEmail)
 	if err != nil {
@@ -163,6 +169,7 @@ func LoadSentEmails(accountEmail string) ([]models.Email, error) {
 	return loadEmailsFromDir(sentPath)
 }
 
+// IsEmailSeen checks if an email has already been viewed by the account.
 func IsEmailSeen(accountEmail, from, subject string) (bool, error) {
 	seenEmails, err := LoadSeenEmails(accountEmail)
 	if err != nil {

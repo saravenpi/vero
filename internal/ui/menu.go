@@ -8,6 +8,7 @@ import (
 	"github.com/saravenpi/vero/internal/models"
 )
 
+// MenuModel represents the main menu view where users select sections.
 type MenuModel struct {
 	account  *config.Account
 	choices  []string
@@ -15,6 +16,7 @@ type MenuModel struct {
 	selected models.Section
 }
 
+// NewMenuModel creates a new main menu model for the specified account.
 func NewMenuModel(account *config.Account) MenuModel {
 	return MenuModel{
 		account: account,

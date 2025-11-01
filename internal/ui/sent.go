@@ -19,6 +19,7 @@ type sentLoadedMsg struct {
 	err    error
 }
 
+// SentModel manages the sent emails view with list and detail views.
 type SentModel struct {
 	account       *config.Account
 	emails        []models.Email
@@ -34,6 +35,7 @@ type SentModel struct {
 	windowHeight  int
 }
 
+// NewSentModel creates a new sent emails model for the specified account.
 func NewSentModel(account *config.Account) SentModel {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
