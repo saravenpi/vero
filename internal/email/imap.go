@@ -179,6 +179,8 @@ func extractTextAndAttachmentsFromParts(mr *mail.Reader) (plainText string, html
 					}
 					attachments = append(attachments, nestedAttachments...)
 				}
+			} else if strings.HasPrefix(contentType, "image/") {
+				io.ReadAll(part.Body)
 			}
 
 		case *mail.AttachmentHeader:
@@ -199,9 +201,13 @@ func extractTextAndAttachmentsFromParts(mr *mail.Reader) (plainText string, html
 					attachments = append(attachments, nestedAttachments...)
 				}
 			} else {
-				attachment := extractAttachment(h, part.Body)
-				if attachment != nil {
-					attachments = append(attachments, *attachment)
+				if !isInlineImage(h) {
+					attachment := extractAttachment(h, part.Body)
+					if attachment != nil {
+						attachments = append(attachments, *attachment)
+					}
+				} else {
+					io.ReadAll(part.Body)
 				}
 			}
 		}
@@ -222,6 +228,28 @@ func reverseEmails(emails []models.Email) {
 		j := len(emails) - i - 1
 		emails[i], emails[j] = emails[j], emails[i]
 	}
+}
+
+func isInlineImage(header *mail.AttachmentHeader) bool {
+	disp, params, _ := header.ContentDisposition()
+
+	if disp == "inline" {
+		contentType, _, _ := header.ContentType()
+		if strings.HasPrefix(contentType, "image/") {
+			return true
+		}
+
+		if _, ok := params["filename"]; !ok {
+			return true
+		}
+	}
+
+	contentID := header.Get("Content-ID")
+	if contentID != "" && disp == "inline" {
+		return true
+	}
+
+	return false
 }
 
 func extractAttachment(header *mail.AttachmentHeader, body io.Reader) *models.Attachment {
