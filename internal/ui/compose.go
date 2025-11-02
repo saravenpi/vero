@@ -36,6 +36,7 @@ type emailSentMsg struct {
 
 // ComposeModel manages the email composition workflow through multiple steps.
 type ComposeModel struct {
+	cfg                *config.VeroConfig
 	account            *config.Account
 	step               composeStep
 	toInput            textinput.Model
@@ -54,7 +55,7 @@ type ComposeModel struct {
 }
 
 // NewComposeModel creates a new email composition model for the specified account.
-func NewComposeModel(account *config.Account) ComposeModel {
+func NewComposeModel(cfg *config.VeroConfig, account *config.Account) ComposeModel {
 	ti := textinput.New()
 	ti.Placeholder = "recipient@example.com"
 	ti.Focus()
@@ -86,6 +87,7 @@ func NewComposeModel(account *config.Account) ComposeModel {
 	s.Style = statusStyle
 
 	return ComposeModel{
+		cfg:                cfg,
 		account:            account,
 		step:               stepTo,
 		toInput:            ti,
@@ -144,9 +146,9 @@ func (m ComposeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			if m.step == stepDone {
-				return NewMenuModel(m.account), nil
+				return NewMenuModel(m.cfg, m.account), nil
 			}
-			return NewMenuModel(m.account), nil
+			return NewMenuModel(m.cfg, m.account), nil
 
 		case "enter":
 			switch m.step {
@@ -199,7 +201,7 @@ func (m ComposeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Batch(m.spinner.Tick, m.sendEmailCmd())
 
 			case stepDone:
-				return NewMenuModel(m.account), nil
+				return NewMenuModel(m.cfg, m.account), nil
 			}
 
 		case "ctrl+d":

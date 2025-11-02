@@ -49,6 +49,7 @@ func (i emailItem) Description() string {
 
 // InboxModel manages the inbox view with email list and detail views.
 type InboxModel struct {
+	cfg               *config.VeroConfig
 	account           *config.Account
 	emails            []models.Email
 	list              list.Model
@@ -67,7 +68,7 @@ type InboxModel struct {
 }
 
 // NewInboxModel creates a new inbox model for the specified account.
-func NewInboxModel(account *config.Account) InboxModel {
+func NewInboxModel(cfg *config.VeroConfig, account *config.Account) InboxModel {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = statusStyle
@@ -88,11 +89,22 @@ func NewInboxModel(account *config.Account) InboxModel {
 	vp := viewport.New(80, 20)
 	vp.HighPerformanceRendering = false
 
+	defaultFilter := models.FilterAll
+	switch cfg.DefaultInboxView {
+	case "unseen":
+		defaultFilter = models.FilterUnseen
+	case "seen":
+		defaultFilter = models.FilterSeen
+	case "all":
+		defaultFilter = models.FilterAll
+	}
+
 	m := InboxModel{
+		cfg:           cfg,
 		account:       account,
 		list:          l,
 		viewMode:      models.ViewList,
-		filter:        models.FilterUnseen,
+		filter:        defaultFilter,
 		loading:       true,
 		spinner:       s,
 		viewport:      vp,
@@ -137,12 +149,7 @@ func (m InboxModel) openAttachmentCmd(attachment models.Attachment) tea.Cmd {
 
 func (m InboxModel) downloadAttachmentCmd(attachment models.Attachment) tea.Cmd {
 	return func() tea.Msg {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return nil
-		}
-
-		downloadsDir := filepath.Join(home, "Downloads")
+		downloadsDir := m.cfg.DownloadFolder
 		destPath := filepath.Join(downloadsDir, attachment.Filename)
 
 		counter := 1
@@ -237,7 +244,7 @@ func (m InboxModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			// Go back to menu
-			menu := NewMenuModel(m.account)
+			menu := NewMenuModel(m.cfg, m.account)
 			return menu, menu.Init()
 		}
 

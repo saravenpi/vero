@@ -21,6 +21,7 @@ type sentLoadedMsg struct {
 
 // SentModel manages the sent emails view with list and detail views.
 type SentModel struct {
+	cfg           *config.VeroConfig
 	account       *config.Account
 	emails        []models.Email
 	cursor        int
@@ -36,7 +37,7 @@ type SentModel struct {
 }
 
 // NewSentModel creates a new sent emails model for the specified account.
-func NewSentModel(account *config.Account) SentModel {
+func NewSentModel(cfg *config.VeroConfig, account *config.Account) SentModel {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = statusStyle
@@ -45,6 +46,7 @@ func NewSentModel(account *config.Account) SentModel {
 	vp.HighPerformanceRendering = false
 
 	return SentModel{
+		cfg:           cfg,
 		account:       account,
 		viewMode:      models.ViewList,
 		loading:       true,
@@ -107,7 +109,7 @@ func (m SentModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.viewMode = models.ViewList
 				return m, nil
 			}
-			return NewMenuModel(m.account), nil
+			return NewMenuModel(m.cfg, m.account), nil
 
 		case "up", "k":
 			if m.viewMode == models.ViewList && m.cursor > 0 {

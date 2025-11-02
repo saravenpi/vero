@@ -10,6 +10,7 @@ import (
 
 // MenuModel represents the main menu view where users select sections.
 type MenuModel struct {
+	cfg      *config.VeroConfig
 	account  *config.Account
 	choices  []string
 	cursor   int
@@ -17,8 +18,9 @@ type MenuModel struct {
 }
 
 // NewMenuModel creates a new main menu model for the specified account.
-func NewMenuModel(account *config.Account) MenuModel {
+func NewMenuModel(cfg *config.VeroConfig, account *config.Account) MenuModel {
 	return MenuModel{
+		cfg:     cfg,
 		account: account,
 		choices: []string{"Inbox", "Sent", "Write"},
 		cursor:  0,
@@ -49,13 +51,13 @@ func (m MenuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			switch m.cursor {
 			case 0:
-				inbox := NewInboxModel(m.account)
+				inbox := NewInboxModel(m.cfg, m.account)
 				return inbox, inbox.Init()
 			case 1:
-				sent := NewSentModel(m.account)
+				sent := NewSentModel(m.cfg, m.account)
 				return sent, sent.Init()
 			case 2:
-				compose := NewComposeModel(m.account)
+				compose := NewComposeModel(m.cfg, m.account)
 				return compose, compose.Init()
 			}
 		}

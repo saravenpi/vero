@@ -10,7 +10,9 @@ import (
 
 // VeroConfig represents the main configuration file structure.
 type VeroConfig struct {
-	Accounts []Account `yaml:"accounts"`
+	Accounts         []Account `yaml:"accounts"`
+	DownloadFolder   string    `yaml:"download_folder,omitempty"`
+	DefaultInboxView string    `yaml:"default_inbox_view,omitempty"`
 }
 
 // Account represents a single email account configuration.
@@ -83,5 +85,35 @@ func Load() (*VeroConfig, error) {
 		}
 	}
 
+	if cfg.DownloadFolder == "" {
+		cfg.DownloadFolder = filepath.Join(home, "Downloads")
+	} else {
+		cfg.DownloadFolder = expandPath(cfg.DownloadFolder, home)
+	}
+
+	if cfg.DefaultInboxView == "" {
+		cfg.DefaultInboxView = "all"
+	} else {
+		validViews := map[string]bool{"unseen": true, "seen": true, "all": true}
+		if !validViews[cfg.DefaultInboxView] {
+			return nil, fmt.Errorf("invalid default_inbox_view '%s', must be 'unseen', 'seen', or 'all'", cfg.DefaultInboxView)
+		}
+	}
+
 	return &cfg, nil
+}
+
+func expandPath(path string, home string) string {
+	if filepath.IsAbs(path) {
+		return path
+	}
+	if len(path) > 0 && path[0] == '~' {
+		if len(path) == 1 {
+			return home
+		}
+		if path[1] == '/' || path[1] == filepath.Separator {
+			return filepath.Join(home, path[2:])
+		}
+	}
+	return path
 }

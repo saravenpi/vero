@@ -35,7 +35,7 @@ func main() {
 
 	var initialModel tea.Model
 	if len(cfg.Accounts) == 1 {
-		initialModel = ui.NewMenuModel(&cfg.Accounts[0])
+		initialModel = ui.NewMenuModel(cfg, &cfg.Accounts[0])
 	} else {
 		initialModel = ui.NewAccountSelectionModel(cfg)
 	}
@@ -58,18 +58,23 @@ Usage:
 Configuration:
   Create a ~/.vero.yml file with your accounts:
 
+  # Global settings (optional)
+  download_folder: ~/Downloads          # Default: ~/Downloads
+  default_inbox_view: all                # Options: unseen, seen, all (Default: all)
+
+  # Account configuration
   accounts:
     - email: your@email.com
       imap:
-        user: your@email.com      # Optional, defaults to email
+        user: your@email.com             # Optional, defaults to email
         password: your-password
         host: imap.example.com
-        port: 993                  # Optional, defaults to 993
+        port: 993                         # Optional, defaults to 993
       smtp:
-        user: your@email.com      # Optional, defaults to email
+        user: your@email.com             # Optional, defaults to email
         password: your-password
         host: smtp.example.com
-        port: 465                  # Optional, defaults to 465
+        port: 465                         # Optional, defaults to 465
 
   You can configure multiple accounts in the same file.
 
@@ -85,13 +90,20 @@ Inbox Filters:
   a                 Show all emails
 
 Compose:
+  Tab               Autocomplete file paths
   Ctrl+D            Finish writing body and preview
   Enter             Confirm and move to next field
 
+Attachments:
+  o                 Open attachment with default app
+  d                 Download attachment to configured folder
+  ←→ or h/l         Navigate between attachments
+
 Data Storage:
   Emails are stored locally in ~/.vero/
-    <account-email>/seen/    Viewed emails for each account
-    <account-email>/sent/    Sent emails for each account
+    <account-email>/seen/        Viewed emails for each account
+    <account-email>/sent/        Sent emails for each account
+    attachments/                 Downloaded attachments
 `
 	fmt.Print(help)
 }

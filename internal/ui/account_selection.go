@@ -51,7 +51,7 @@ func (m AccountSelectionModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "enter":
 			selectedAccount := &m.cfg.Accounts[m.cursor]
-			menu := NewMenuModel(selectedAccount)
+			menu := NewMenuModel(m.cfg, selectedAccount)
 			return menu, menu.Init()
 		}
 	}
