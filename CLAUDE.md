@@ -34,7 +34,10 @@ The application requires a `~/.vero.yml` configuration file with account setting
 - Each account needs `email`, `imap` (user, password, host, port), and `smtp` (user, password, host, port)
 - User fields default to the email address if not provided
 - Ports default to 993 (IMAP) and 465 (SMTP) if not specified
-- Multiple accounts can be configured in the same file (see `internal/config/config.go`).
+- Multiple accounts can be configured in the same file (see `internal/config/config.go`)
+- Optional `editor` field to specify an external editor for composing email bodies (e.g., `neovim`, `vim`, `nano`)
+  - If set, the specified editor will open in a temporary file when composing the email body (similar to git commit editor)
+  - If not set, the built-in textarea editor is used
 
 ## Architecture
 
@@ -54,7 +57,7 @@ The application follows the Bubble Tea architecture (Model-Update-View pattern):
 - Each view is a separate Bubble Tea model with Init(), Update(), View() methods
 - `menu.go` - Main menu with section selection
 - `inbox.go` - Email list and detail view with filtering (u/s/a keys)
-- `compose.go` - Multi-step email composition (To → CC → Subject → Body → Preview)
+- `compose.go` - Multi-step email composition (To → CC → Subject → Body → Preview), supports external editor via `tea.Exec` or built-in textarea
 - `sent.go` - Sent emails viewer
 - `styles.go` - Centralized Lip Gloss styling
 

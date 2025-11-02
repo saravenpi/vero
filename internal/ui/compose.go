@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -34,6 +35,11 @@ type emailSentMsg struct {
 	err error
 }
 
+type editorFinishedMsg struct {
+	body string
+	err  error
+}
+
 // ComposeModel manages the email composition workflow through multiple steps.
 type ComposeModel struct {
 	cfg                *config.VeroConfig
@@ -52,6 +58,7 @@ type ComposeModel struct {
 	completions        []string
 	completionIndex    int
 	lastCompletionPath string
+	usingExternalEditor bool
 }
 
 // NewComposeModel creates a new email composition model for the specified account.
@@ -121,6 +128,20 @@ func (m ComposeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case editorFinishedMsg:
+		m.usingExternalEditor = false
+		if msg.err != nil {
+			m.err = msg.err
+			m.step = stepSubject
+			m.subjInput.Focus()
+			return m, nil
+		}
+		m.draft.Body = msg.body
+		m.bodyInput.SetValue(msg.body)
+		m.step = stepAttachments
+		m.attachInput.Focus()
+		return m, nil
+
 	case spinner.TickMsg:
 		if m.step == stepSending {
 			var spinnerCmd tea.Cmd
@@ -141,6 +162,11 @@ func (m ComposeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			if m.step == stepAttachments {
+				if m.cfg.Editor != "" {
+					m.step = stepBody
+					m.usingExternalEditor = true
+					return m, m.openExternalEditorCmd()
+				}
 				m.step = stepBody
 				m.bodyInput.Focus()
 				return m, nil
@@ -176,6 +202,12 @@ func (m ComposeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.step = stepBody
 				m.subjInput.Blur()
+
+				if m.cfg.Editor != "" {
+					m.usingExternalEditor = true
+					return m, m.openExternalEditorCmd()
+				}
+
 				m.bodyInput.Focus()
 				return m, nil
 
@@ -205,7 +237,7 @@ func (m ComposeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "ctrl+d":
-			if m.step == stepBody {
+			if m.step == stepBody && !m.usingExternalEditor {
 				m.draft.Body = m.bodyInput.Value()
 				if m.draft.Body == "" {
 					return m, nil
@@ -283,7 +315,9 @@ func (m ComposeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case stepSubject:
 		m.subjInput, cmd = m.subjInput.Update(msg)
 	case stepBody:
-		m.bodyInput, cmd = m.bodyInput.Update(msg)
+		if !m.usingExternalEditor {
+			m.bodyInput, cmd = m.bodyInput.Update(msg)
+		}
 	case stepAttachments:
 		oldValue := m.attachInput.Value()
 		m.attachInput, cmd = m.attachInput.Update(msg)
@@ -375,7 +409,13 @@ func (m ComposeModel) View() string {
 			s += labelStyle.Render("  CC: ") + normalStyle.Render(m.draft.CC) + "\n"
 		}
 		s += labelStyle.Render("  Subject: ") + m.subjInput.View() + "\n"
-		s += helpStyle.Render("\n  enter: next • esc: cancel")
+		if m.err != nil {
+			s += "\n" + errorStyle.Render(fmt.Sprintf("  Error: %v", m.err)) + "\n"
+			s += helpStyle.Render("\n  enter: retry • esc: cancel")
+			m.err = nil
+		} else {
+			s += helpStyle.Render("\n  enter: next • esc: cancel")
+		}
 
 	case stepBody:
 		s += labelStyle.Render("  To: ") + normalStyle.Render(m.draft.To) + "\n"
@@ -383,8 +423,17 @@ func (m ComposeModel) View() string {
 			s += labelStyle.Render("  CC: ") + normalStyle.Render(m.draft.CC) + "\n"
 		}
 		s += labelStyle.Render("  Subject: ") + normalStyle.Render(m.draft.Subject) + "\n\n"
-		s += labelStyle.Render("  Body:\n") + m.bodyInput.View() + "\n"
-		s += helpStyle.Render("\n  ctrl+d: attachments • esc: cancel")
+
+		if m.usingExternalEditor {
+			s += statusStyle.Render("  Opening external editor...") + "\n"
+			if m.err != nil {
+				s += "\n" + errorStyle.Render(fmt.Sprintf("  Error: %v", m.err)) + "\n"
+				m.err = nil
+			}
+		} else {
+			s += labelStyle.Render("  Body:\n") + m.bodyInput.View() + "\n"
+			s += helpStyle.Render("\n  ctrl+d: attachments • esc: cancel")
+		}
 
 	case stepAttachments:
 		s += labelStyle.Render("  To: ") + normalStyle.Render(m.draft.To) + "\n"
@@ -459,4 +508,41 @@ func (m ComposeModel) sendEmailCmd() tea.Cmd {
 
 		return emailSentMsg{err: nil}
 	}
+}
+
+func (m ComposeModel) openExternalEditorCmd() tea.Cmd {
+	tmpfile, err := os.CreateTemp("", "vero-email-*.txt")
+	if err != nil {
+		return func() tea.Msg {
+			return editorFinishedMsg{err: fmt.Errorf("failed to create temp file: %w", err)}
+		}
+	}
+	tmpPath := tmpfile.Name()
+
+	if m.draft.Body != "" {
+		if _, err := tmpfile.WriteString(m.draft.Body); err != nil {
+			tmpfile.Close()
+			os.Remove(tmpPath)
+			return func() tea.Msg {
+				return editorFinishedMsg{err: fmt.Errorf("failed to write to temp file: %w", err)}
+			}
+		}
+	}
+	tmpfile.Close()
+
+	c := exec.Command(m.cfg.Editor, tmpPath)
+	return tea.ExecProcess(c, func(err error) tea.Msg {
+		defer os.Remove(tmpPath)
+
+		if err != nil {
+			return editorFinishedMsg{err: fmt.Errorf("editor exited with error: %w", err)}
+		}
+
+		content, err := os.ReadFile(tmpPath)
+		if err != nil {
+			return editorFinishedMsg{err: fmt.Errorf("failed to read temp file: %w", err)}
+		}
+
+		return editorFinishedMsg{body: string(content), err: nil}
+	})
 }

@@ -13,6 +13,7 @@ type VeroConfig struct {
 	Accounts         []Account `yaml:"accounts"`
 	DownloadFolder   string    `yaml:"download_folder,omitempty"`
 	DefaultInboxView string    `yaml:"default_inbox_view,omitempty"`
+	Editor           string    `yaml:"editor,omitempty"`
 }
 
 // Account represents a single email account configuration.
