@@ -48,4 +48,26 @@ var (
 	unreadStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("2")).
 			Bold(true)
+
+	attachmentStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("6")).
+			MarginLeft(4)
+
+	attachmentHeaderStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("5")).
+				Bold(true).
+				MarginLeft(2)
+
+	attachmentSelectedStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("5")).
+				Background(lipgloss.Color("235")).
+				Bold(true).
+				MarginLeft(4)
+
+	attachmentIconStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("3"))
+
+	attachmentSizeStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("243")).
+				Italic(true)
 )

@@ -2,6 +2,8 @@ package ui
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -22,6 +24,7 @@ const (
 	stepCC
 	stepSubject
 	stepBody
+	stepAttachments
 	stepPreview
 	stepSending
 	stepDone
@@ -33,16 +36,18 @@ type emailSentMsg struct {
 
 // ComposeModel manages the email composition workflow through multiple steps.
 type ComposeModel struct {
-	account   *config.Account
-	step      composeStep
-	toInput   textinput.Model
-	ccInput   textinput.Model
-	subjInput textinput.Model
-	bodyInput textarea.Model
-	draft     models.EmailDraft
-	err       error
-	success   bool
-	spinner   spinner.Model
+	account           *config.Account
+	step              composeStep
+	toInput           textinput.Model
+	ccInput           textinput.Model
+	subjInput         textinput.Model
+	bodyInput         textarea.Model
+	attachInput       textinput.Model
+	draft             models.EmailDraft
+	selectedAttachIdx int
+	err               error
+	success           bool
+	spinner           spinner.Model
 }
 
 // NewComposeModel creates a new email composition model for the specified account.
@@ -68,18 +73,25 @@ func NewComposeModel(account *config.Account) ComposeModel {
 	ta.SetWidth(80)
 	ta.SetHeight(10)
 
+	attach := textinput.New()
+	attach.Placeholder = "/path/to/file.pdf"
+	attach.CharLimit = 512
+	attach.Width = 60
+
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = statusStyle
 
 	return ComposeModel{
-		account:   account,
-		step:      stepTo,
-		toInput:   ti,
-		ccInput:   cc,
-		subjInput: subj,
-		bodyInput: ta,
-		spinner:   s,
+		account:           account,
+		step:              stepTo,
+		toInput:           ti,
+		ccInput:           cc,
+		subjInput:         subj,
+		bodyInput:         ta,
+		attachInput:       attach,
+		selectedAttachIdx: 0,
+		spinner:           s,
 	}
 }
 
@@ -116,6 +128,11 @@ func (m ComposeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "esc":
 			if m.step == stepPreview {
+				m.step = stepAttachments
+				m.attachInput.Focus()
+				return m, nil
+			}
+			if m.step == stepAttachments {
 				m.step = stepBody
 				m.bodyInput.Focus()
 				return m, nil
@@ -154,6 +171,20 @@ func (m ComposeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.bodyInput.Focus()
 				return m, nil
 
+			case stepAttachments:
+				filePath := m.attachInput.Value()
+				if filePath != "" {
+					if err := m.addAttachment(filePath); err != nil {
+						m.err = err
+					} else {
+						m.attachInput.SetValue("")
+					}
+				} else {
+					m.step = stepPreview
+					m.attachInput.Blur()
+				}
+				return m, nil
+
 			case stepPreview:
 				m.step = stepSending
 				return m, tea.Batch(m.spinner.Tick, m.sendEmailCmd())
@@ -168,8 +199,42 @@ func (m ComposeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.draft.Body == "" {
 					return m, nil
 				}
-				m.step = stepPreview
+				m.step = stepAttachments
 				m.bodyInput.Blur()
+				m.attachInput.Focus()
+				return m, nil
+			}
+		case "ctrl+n":
+			if m.step == stepAttachments {
+				m.step = stepPreview
+				m.attachInput.Blur()
+				return m, nil
+			}
+		case "backspace":
+			if m.step == stepAttachments && m.attachInput.Value() == "" && len(m.draft.Attachments) > 0 {
+				if m.selectedAttachIdx >= 0 && m.selectedAttachIdx < len(m.draft.Attachments) {
+					m.draft.Attachments = append(
+						m.draft.Attachments[:m.selectedAttachIdx],
+						m.draft.Attachments[m.selectedAttachIdx+1:]...,
+					)
+					if m.selectedAttachIdx >= len(m.draft.Attachments) && len(m.draft.Attachments) > 0 {
+						m.selectedAttachIdx = len(m.draft.Attachments) - 1
+					}
+				}
+				return m, nil
+			}
+		case "up":
+			if m.step == stepAttachments && m.attachInput.Value() == "" && len(m.draft.Attachments) > 0 {
+				if m.selectedAttachIdx > 0 {
+					m.selectedAttachIdx--
+				}
+				return m, nil
+			}
+		case "down":
+			if m.step == stepAttachments && m.attachInput.Value() == "" && len(m.draft.Attachments) > 0 {
+				if m.selectedAttachIdx < len(m.draft.Attachments)-1 {
+					m.selectedAttachIdx++
+				}
 				return m, nil
 			}
 		}
@@ -184,9 +249,51 @@ func (m ComposeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.subjInput, cmd = m.subjInput.Update(msg)
 	case stepBody:
 		m.bodyInput, cmd = m.bodyInput.Update(msg)
+	case stepAttachments:
+		m.attachInput, cmd = m.attachInput.Update(msg)
 	}
 
 	return m, cmd
+}
+
+func (m *ComposeModel) addAttachment(filePath string) error {
+	filePath = strings.TrimSpace(filePath)
+
+	if strings.HasPrefix(filePath, "~/") {
+		home, err := os.UserHomeDir()
+		if err == nil {
+			filePath = filepath.Join(home, filePath[2:])
+		}
+	}
+
+	info, err := os.Stat(filePath)
+	if err != nil {
+		return fmt.Errorf("file not found: %s", filePath)
+	}
+
+	if info.IsDir() {
+		return fmt.Errorf("cannot attach directory: %s", filePath)
+	}
+
+	filename := filepath.Base(filePath)
+
+	for _, att := range m.draft.Attachments {
+		if att.FilePath == filePath {
+			return fmt.Errorf("file already attached: %s", filename)
+		}
+	}
+
+	attachment := models.Attachment{
+		Filename:    filename,
+		ContentType: "",
+		Size:        info.Size(),
+		FilePath:    filePath,
+	}
+
+	m.draft.Attachments = append(m.draft.Attachments, attachment)
+	m.selectedAttachIdx = len(m.draft.Attachments) - 1
+
+	return nil
 }
 
 func (m ComposeModel) View() string {
@@ -235,21 +342,58 @@ func (m ComposeModel) View() string {
 		}
 		s += labelStyle.Render("  Subject: ") + normalStyle.Render(m.draft.Subject) + "\n\n"
 		s += labelStyle.Render("  Body:\n") + m.bodyInput.View() + "\n"
-		s += helpStyle.Render("\n  ctrl+d: preview • esc: cancel")
+		s += helpStyle.Render("\n  ctrl+d: attachments • esc: cancel")
+
+	case stepAttachments:
+		s += labelStyle.Render("  To: ") + normalStyle.Render(m.draft.To) + "\n"
+		if m.draft.CC != "" {
+			s += labelStyle.Render("  CC: ") + normalStyle.Render(m.draft.CC) + "\n"
+		}
+		s += labelStyle.Render("  Subject: ") + normalStyle.Render(m.draft.Subject) + "\n"
+
+		if len(m.draft.Attachments) > 0 {
+			s += "\n" + attachmentHeaderStyle.Render("Attachments:") + "\n"
+			s += renderAttachmentList(m.draft.Attachments, m.selectedAttachIdx, m.attachInput.Value() == "")
+		}
+
+		s += "\n" + labelStyle.Render("  Add file: ") + m.attachInput.View() + "\n"
+
+		if m.err != nil {
+			s += "\n" + errorStyle.Render(fmt.Sprintf("  Error: %v", m.err)) + "\n"
+			m.err = nil
+		}
+
+		helpText := "enter: add file"
+		if len(m.draft.Attachments) > 0 {
+			helpText += " • up/down: select • backspace: remove"
+		}
+		helpText += " • ctrl+n: next • esc: back"
+		s += helpStyle.Render("\n  " + helpText)
 
 	case stepPreview:
 		s += emailHeaderStyle.Render("  To: ") + normalStyle.Render(m.draft.To) + "\n"
 		if m.draft.CC != "" {
 			s += emailHeaderStyle.Render("  CC: ") + normalStyle.Render(m.draft.CC) + "\n"
 		}
-		s += emailHeaderStyle.Render("  Subject: ") + normalStyle.Render(m.draft.Subject) + "\n\n"
+		s += emailHeaderStyle.Render("  Subject: ") + normalStyle.Render(m.draft.Subject) + "\n"
+
+		if len(m.draft.Attachments) > 0 {
+			s += emailHeaderStyle.Render("  Attachments: ") + normalStyle.Render(fmt.Sprintf("%d file(s)", len(m.draft.Attachments))) + "\n"
+		}
+
+		s += "\n"
 
 		bodyLines := strings.Split(m.draft.Body, "\n")
 		for _, line := range bodyLines {
 			s += emailBodyStyle.Render(line) + "\n"
 		}
 
-		s += "\n" + helpStyle.Render("enter: send • esc: edit body")
+		if len(m.draft.Attachments) > 0 {
+			s += "\n" + attachmentHeaderStyle.Render("Attached files:") + "\n"
+			s += renderAttachmentList(m.draft.Attachments, -1, false)
+		}
+
+		s += "\n" + helpStyle.Render("enter: send • esc: edit attachments")
 	}
 
 	return s

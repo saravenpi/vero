@@ -6,22 +6,29 @@ import (
 	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
 	"github.com/saravenpi/vero/internal/config"
+	"github.com/saravenpi/vero/internal/models"
 )
 
 // FetchEmailBody retrieves the full body content of a specific email from the IMAP server.
 func FetchEmailBody(cfg *config.IMAPConfig, from, subject string) (string, error) {
+	body, _, err := FetchEmailBodyAndAttachments(cfg, from, subject)
+	return body, err
+}
+
+// FetchEmailBodyAndAttachments retrieves the full body content and attachments of a specific email from the IMAP server.
+func FetchEmailBodyAndAttachments(cfg *config.IMAPConfig, from, subject string) (string, []models.Attachment, error) {
 	c, err := client.DialTLS(fmt.Sprintf("%s:%d", cfg.Host, cfg.Port), nil)
 	if err != nil {
-		return "", fmt.Errorf("failed to connect: %w", err)
+		return "", nil, fmt.Errorf("failed to connect: %w", err)
 	}
 	defer c.Logout()
 
 	if err := c.Login(cfg.User, cfg.Password); err != nil {
-		return "", fmt.Errorf("failed to login: %w", err)
+		return "", nil, fmt.Errorf("failed to login: %w", err)
 	}
 
 	if _, err := c.Select("INBOX", false); err != nil {
-		return "", fmt.Errorf("failed to select INBOX: %w", err)
+		return "", nil, fmt.Errorf("failed to select INBOX: %w", err)
 	}
 
 	criteria := imap.NewSearchCriteria()
@@ -33,12 +40,12 @@ func FetchEmailBody(cfg *config.IMAPConfig, from, subject string) (string, error
 		criteria = imap.NewSearchCriteria()
 		seqNums, err = c.Search(criteria)
 		if err != nil {
-			return "", fmt.Errorf("failed to search: %w", err)
+			return "", nil, fmt.Errorf("failed to search: %w", err)
 		}
 	}
 
 	if len(seqNums) == 0 {
-		return "", fmt.Errorf("email not found")
+		return "", nil, fmt.Errorf("email not found")
 	}
 
 	seqSet := new(imap.SeqSet)
@@ -55,18 +62,20 @@ func FetchEmailBody(cfg *config.IMAPConfig, from, subject string) (string, error
 	}()
 
 	var body string
+	var attachments []models.Attachment
 	var parseErr error
 	for msg := range messages {
 		if msg.Envelope != nil {
 			if len(msg.Envelope.From) > 0 && msg.Envelope.Subject == subject {
 				literal := msg.GetBody(section)
 				if literal != nil {
-					parsedBody, err := parseBody(literal)
+					parsedBody, parsedAttachments, err := parseBodyAndAttachments(literal)
 					if err != nil {
 						parseErr = err
 						continue
 					}
 					body = parsedBody
+					attachments = parsedAttachments
 					break
 				}
 			}
@@ -74,16 +83,16 @@ func FetchEmailBody(cfg *config.IMAPConfig, from, subject string) (string, error
 	}
 
 	if err := <-done; err != nil {
-		return "", fmt.Errorf("fetch error: %w", err)
+		return "", nil, fmt.Errorf("fetch error: %w", err)
 	}
 
 	if body == "" && parseErr != nil {
-		return "", fmt.Errorf("failed to parse email body: %w", parseErr)
+		return "", nil, fmt.Errorf("failed to parse email body: %w", parseErr)
 	}
 
 	if body == "" {
-		return "", fmt.Errorf("email body is empty")
+		return "", nil, fmt.Errorf("email body is empty")
 	}
 
-	return body, nil
+	return body, attachments, nil
 }

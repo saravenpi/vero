@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/emersion/go-imap"
@@ -92,38 +94,48 @@ func parseEnvelope(msg *imap.Message) models.Email {
 }
 
 func parseBody(r io.Reader) (string, error) {
+	body, _, err := parseBodyAndAttachments(r)
+	return body, err
+}
+
+func parseBodyAndAttachments(r io.Reader) (string, []models.Attachment, error) {
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
-		return "", fmt.Errorf("failed to read email data: %w", err)
+		return "", nil, fmt.Errorf("failed to read email data: %w", err)
 	}
 
 	if len(data) == 0 {
-		return "", fmt.Errorf("email data is empty")
+		return "", nil, fmt.Errorf("email data is empty")
 	}
 
 	mr, err := mail.CreateReader(strings.NewReader(string(data)))
 	if err != nil {
-		return string(data), nil
+		return string(data), nil, nil
 	}
 
-	plainText, htmlText, hasContent := extractTextFromParts(mr)
+	plainText, htmlText, hasContent, attachments := extractTextAndAttachmentsFromParts(mr)
 
 	if plainText != "" {
-		return plainText, nil
+		return plainText, attachments, nil
 	}
 
 	if htmlText != "" {
-		return htmlText, nil
+		return htmlText, attachments, nil
 	}
 
 	if !hasContent {
-		return "", fmt.Errorf("no text content found in email (only attachments or unsupported content types)")
+		return "", attachments, fmt.Errorf("no text content found in email (only attachments or unsupported content types)")
 	}
 
-	return "", fmt.Errorf("email body could not be extracted")
+	return "", attachments, fmt.Errorf("email body could not be extracted")
 }
 
 func extractTextFromParts(mr *mail.Reader) (plainText string, htmlText string, hasContent bool) {
+	plain, html, content, _ := extractTextAndAttachmentsFromParts(mr)
+	return plain, html, content
+}
+
+func extractTextAndAttachmentsFromParts(mr *mail.Reader) (plainText string, htmlText string, hasContent bool, attachments []models.Attachment) {
 	var plain strings.Builder
 	var html strings.Builder
 
@@ -155,7 +167,7 @@ func extractTextFromParts(mr *mail.Reader) (plainText string, htmlText string, h
 			} else if strings.HasPrefix(contentType, "multipart/") {
 				nestedReader, err := mail.CreateReader(part.Body)
 				if err == nil {
-					nestedPlain, nestedHTML, nestedHasContent := extractTextFromParts(nestedReader)
+					nestedPlain, nestedHTML, nestedHasContent, nestedAttachments := extractTextAndAttachmentsFromParts(nestedReader)
 					if nestedHasContent {
 						if nestedPlain != "" {
 							plain.WriteString(nestedPlain)
@@ -165,6 +177,7 @@ func extractTextFromParts(mr *mail.Reader) (plainText string, htmlText string, h
 						}
 						hasContent = true
 					}
+					attachments = append(attachments, nestedAttachments...)
 				}
 			}
 
@@ -173,7 +186,7 @@ func extractTextFromParts(mr *mail.Reader) (plainText string, htmlText string, h
 			if strings.HasPrefix(contentType, "multipart/") {
 				nestedReader, err := mail.CreateReader(part.Body)
 				if err == nil {
-					nestedPlain, nestedHTML, nestedHasContent := extractTextFromParts(nestedReader)
+					nestedPlain, nestedHTML, nestedHasContent, nestedAttachments := extractTextAndAttachmentsFromParts(nestedReader)
 					if nestedHasContent {
 						if nestedPlain != "" {
 							plain.WriteString(nestedPlain)
@@ -183,12 +196,18 @@ func extractTextFromParts(mr *mail.Reader) (plainText string, htmlText string, h
 						}
 						hasContent = true
 					}
+					attachments = append(attachments, nestedAttachments...)
+				}
+			} else {
+				attachment := extractAttachment(h, part.Body)
+				if attachment != nil {
+					attachments = append(attachments, *attachment)
 				}
 			}
 		}
 	}
 
-	return plain.String(), html.String(), hasContent
+	return plain.String(), html.String(), hasContent, attachments
 }
 
 func formatAddress(addr *imap.Address) string {
@@ -202,5 +221,49 @@ func reverseEmails(emails []models.Email) {
 	for i := 0; i < len(emails)/2; i++ {
 		j := len(emails) - i - 1
 		emails[i], emails[j] = emails[j], emails[i]
+	}
+}
+
+func extractAttachment(header *mail.AttachmentHeader, body io.Reader) *models.Attachment {
+	filename, err := header.Filename()
+	if err != nil || filename == "" {
+		filename = "unnamed_attachment"
+	}
+
+	contentType, _, _ := header.ContentType()
+
+	data, err := io.ReadAll(body)
+	if err != nil {
+		return nil
+	}
+
+	attachDir := filepath.Join(os.Getenv("HOME"), ".vero", "attachments")
+	os.MkdirAll(attachDir, 0755)
+
+	safeFilename := strings.ReplaceAll(filename, "/", "_")
+	safeFilename = strings.ReplaceAll(safeFilename, "..", "_")
+	filePath := filepath.Join(attachDir, safeFilename)
+
+	counter := 1
+	originalPath := filePath
+	for {
+		if _, err := os.Stat(filePath); os.IsNotExist(err) {
+			break
+		}
+		ext := filepath.Ext(originalPath)
+		nameWithoutExt := strings.TrimSuffix(originalPath, ext)
+		filePath = fmt.Sprintf("%s_%d%s", nameWithoutExt, counter, ext)
+		counter++
+	}
+
+	if err := os.WriteFile(filePath, data, 0644); err != nil {
+		return nil
+	}
+
+	return &models.Attachment{
+		Filename:    filename,
+		ContentType: contentType,
+		Size:        int64(len(data)),
+		FilePath:    filePath,
 	}
 }

@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"os/exec"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -22,8 +23,9 @@ type emailsFetchedMsg struct {
 }
 
 type emailBodyFetchedMsg struct {
-	body string
-	err  error
+	body        string
+	attachments []models.Attachment
+	err         error
 }
 
 type emailItem struct {
@@ -45,20 +47,21 @@ func (i emailItem) Description() string {
 
 // InboxModel manages the inbox view with email list and detail views.
 type InboxModel struct {
-	account      *config.Account
-	emails       []models.Email
-	list         list.Model
-	viewMode     models.ViewMode
-	filter       models.InboxFilter
-	loading      bool
-	err          error
-	selectedIdx  int
-	spinner      spinner.Model
-	loadingBody  bool
-	viewport     viewport.Model
-	viewportReady bool
-	windowWidth  int
-	windowHeight int
+	account           *config.Account
+	emails            []models.Email
+	list              list.Model
+	viewMode          models.ViewMode
+	filter            models.InboxFilter
+	loading           bool
+	err               error
+	selectedIdx       int
+	selectedAttachIdx int
+	spinner           spinner.Model
+	loadingBody       bool
+	viewport          viewport.Model
+	viewportReady     bool
+	windowWidth       int
+	windowHeight      int
 }
 
 // NewInboxModel creates a new inbox model for the specified account.
@@ -114,11 +117,19 @@ func (m InboxModel) fetchEmailsCmd() tea.Cmd {
 
 func (m InboxModel) fetchBodyCmd(from, subject string) tea.Cmd {
 	return func() tea.Msg {
-		body, err := email.FetchEmailBody(&m.account.IMAP, from, subject)
+		body, attachments, err := email.FetchEmailBodyAndAttachments(&m.account.IMAP, from, subject)
 		if err != nil {
-			return emailBodyFetchedMsg{body: "", err: err}
+			return emailBodyFetchedMsg{body: "", attachments: nil, err: err}
 		}
-		return emailBodyFetchedMsg{body: body, err: nil}
+		return emailBodyFetchedMsg{body: body, attachments: attachments, err: nil}
+	}
+}
+
+func (m InboxModel) openAttachmentCmd(attachment models.Attachment) tea.Cmd {
+	return func() tea.Msg {
+		cmd := exec.Command("open", attachment.FilePath)
+		_ = cmd.Start()
+		return nil
 	}
 }
 
@@ -159,6 +170,7 @@ func (m InboxModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.selectedIdx >= 0 && m.selectedIdx < len(m.emails) {
 			m.emails[m.selectedIdx].Body = msg.body
+			m.emails[m.selectedIdx].Attachments = msg.attachments
 			m.updateViewportContent()
 			go storage.SaveSeenEmail(m.account.Email, m.emails[m.selectedIdx])
 		}
@@ -228,6 +240,7 @@ func (m InboxModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.viewMode == models.ViewList && len(m.emails) > 0 {
 				if item, ok := m.list.SelectedItem().(emailItem); ok {
 					m.selectedIdx = item.index
+					m.selectedAttachIdx = 0
 					m.viewMode = models.ViewDetail
 					m.viewport.GotoTop()
 
@@ -242,6 +255,33 @@ func (m InboxModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 					m.updateViewportContent()
 					go storage.SaveSeenEmail(m.account.Email, m.emails[item.index])
+					return m, nil
+				}
+			}
+
+		case "o":
+			if m.viewMode == models.ViewDetail && m.selectedIdx >= 0 && m.selectedIdx < len(m.emails) {
+				email := m.emails[m.selectedIdx]
+				if len(email.Attachments) > 0 && m.selectedAttachIdx >= 0 && m.selectedAttachIdx < len(email.Attachments) {
+					attachment := email.Attachments[m.selectedAttachIdx]
+					return m, m.openAttachmentCmd(attachment)
+				}
+			}
+
+		case "left", "h":
+			if m.viewMode == models.ViewDetail && m.selectedIdx >= 0 && m.selectedIdx < len(m.emails) {
+				email := m.emails[m.selectedIdx]
+				if len(email.Attachments) > 0 && m.selectedAttachIdx > 0 {
+					m.selectedAttachIdx--
+					return m, nil
+				}
+			}
+
+		case "right", "l":
+			if m.viewMode == models.ViewDetail && m.selectedIdx >= 0 && m.selectedIdx < len(m.emails) {
+				email := m.emails[m.selectedIdx]
+				if len(email.Attachments) > 0 && m.selectedAttachIdx < len(email.Attachments)-1 {
+					m.selectedAttachIdx++
 					return m, nil
 				}
 			}
@@ -343,7 +383,23 @@ func (m InboxModel) renderDetail() string {
 
 	s += emailHeaderStyle.Render("  From: ") + normalStyle.Render(email.From) + "\n"
 	s += emailHeaderStyle.Render("  Subject: ") + normalStyle.Render(email.Subject) + "\n"
-	s += emailHeaderStyle.Render("  Date: ") + normalStyle.Render(email.Date) + "\n\n"
+	s += emailHeaderStyle.Render("  Date: ") + normalStyle.Render(email.Date) + "\n"
+
+	if len(email.Attachments) > 0 {
+		s += "\n" + attachmentHeaderStyle.Render("Attachments:") + "\n"
+		for i, att := range email.Attachments {
+			icon := getFileIcon(att.Filename)
+			sizeStr := formatFileSize(att.Size)
+
+			if i == m.selectedAttachIdx {
+				s += attachmentSelectedStyle.Render(fmt.Sprintf("▶ %s %s (%s)", icon, att.Filename, sizeStr)) + "\n"
+			} else {
+				s += attachmentStyle.Render(fmt.Sprintf("  %s %s (%s)", icon, att.Filename, sizeStr)) + "\n"
+			}
+		}
+	}
+
+	s += "\n"
 
 	if m.loadingBody {
 		s += fmt.Sprintf("  %s Loading email content...\n", m.spinner.View())
@@ -359,7 +415,13 @@ func (m InboxModel) renderDetail() string {
 		scrollInfo = fmt.Sprintf(" • %d%%", scrollPercent)
 	}
 
-	s += "\n" + helpStyle.Render("↑↓/j/k: scroll • esc: back to list • q: quit"+scrollInfo)
+	helpText := "↑↓/j/k: scroll"
+	if len(email.Attachments) > 0 {
+		helpText += " • ←→/h/l: select attachment • o: open"
+	}
+	helpText += " • esc: back • q: quit" + scrollInfo
+
+	s += "\n" + helpStyle.Render(helpText)
 
 	return s
 }
