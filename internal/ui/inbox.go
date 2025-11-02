@@ -2,7 +2,9 @@ package ui
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -129,6 +131,42 @@ func (m InboxModel) openAttachmentCmd(attachment models.Attachment) tea.Cmd {
 	return func() tea.Msg {
 		cmd := exec.Command("open", attachment.FilePath)
 		_ = cmd.Start()
+		return nil
+	}
+}
+
+func (m InboxModel) downloadAttachmentCmd(attachment models.Attachment) tea.Cmd {
+	return func() tea.Msg {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil
+		}
+
+		downloadsDir := filepath.Join(home, "Downloads")
+		destPath := filepath.Join(downloadsDir, attachment.Filename)
+
+		counter := 1
+		originalPath := destPath
+		for {
+			if _, err := os.Stat(destPath); os.IsNotExist(err) {
+				break
+			}
+			ext := filepath.Ext(originalPath)
+			nameWithoutExt := strings.TrimSuffix(filepath.Base(originalPath), ext)
+			destPath = filepath.Join(downloadsDir, fmt.Sprintf("%s (%d)%s", nameWithoutExt, counter, ext))
+			counter++
+		}
+
+		data, err := os.ReadFile(attachment.FilePath)
+		if err != nil {
+			return nil
+		}
+
+		err = os.WriteFile(destPath, data, 0644)
+		if err != nil {
+			return nil
+		}
+
 		return nil
 	}
 }
@@ -265,6 +303,15 @@ func (m InboxModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if len(email.Attachments) > 0 && m.selectedAttachIdx >= 0 && m.selectedAttachIdx < len(email.Attachments) {
 					attachment := email.Attachments[m.selectedAttachIdx]
 					return m, m.openAttachmentCmd(attachment)
+				}
+			}
+
+		case "d":
+			if m.viewMode == models.ViewDetail && m.selectedIdx >= 0 && m.selectedIdx < len(m.emails) {
+				email := m.emails[m.selectedIdx]
+				if len(email.Attachments) > 0 && m.selectedAttachIdx >= 0 && m.selectedAttachIdx < len(email.Attachments) {
+					attachment := email.Attachments[m.selectedAttachIdx]
+					return m, m.downloadAttachmentCmd(attachment)
 				}
 			}
 
@@ -417,7 +464,7 @@ func (m InboxModel) renderDetail() string {
 
 	helpText := "↑↓/j/k: scroll"
 	if len(email.Attachments) > 0 {
-		helpText += " • ←→/h/l: select attachment • o: open"
+		helpText += " • ←→/h/l: select • o: open • d: download"
 	}
 	helpText += " • esc: back • q: quit" + scrollInfo
 

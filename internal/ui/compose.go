@@ -36,18 +36,21 @@ type emailSentMsg struct {
 
 // ComposeModel manages the email composition workflow through multiple steps.
 type ComposeModel struct {
-	account           *config.Account
-	step              composeStep
-	toInput           textinput.Model
-	ccInput           textinput.Model
-	subjInput         textinput.Model
-	bodyInput         textarea.Model
-	attachInput       textinput.Model
-	draft             models.EmailDraft
-	selectedAttachIdx int
-	err               error
-	success           bool
-	spinner           spinner.Model
+	account            *config.Account
+	step               composeStep
+	toInput            textinput.Model
+	ccInput            textinput.Model
+	subjInput          textinput.Model
+	bodyInput          textarea.Model
+	attachInput        textinput.Model
+	draft              models.EmailDraft
+	selectedAttachIdx  int
+	err                error
+	success            bool
+	spinner            spinner.Model
+	completions        []string
+	completionIndex    int
+	lastCompletionPath string
 }
 
 // NewComposeModel creates a new email composition model for the specified account.
@@ -83,15 +86,18 @@ func NewComposeModel(account *config.Account) ComposeModel {
 	s.Style = statusStyle
 
 	return ComposeModel{
-		account:           account,
-		step:              stepTo,
-		toInput:           ti,
-		ccInput:           cc,
-		subjInput:         subj,
-		bodyInput:         ta,
-		attachInput:       attach,
-		selectedAttachIdx: 0,
-		spinner:           s,
+		account:            account,
+		step:               stepTo,
+		toInput:            ti,
+		ccInput:            cc,
+		subjInput:          subj,
+		bodyInput:          ta,
+		attachInput:        attach,
+		selectedAttachIdx:  0,
+		spinner:            s,
+		completions:        []string{},
+		completionIndex:    -1,
+		lastCompletionPath: "",
 	}
 }
 
@@ -178,6 +184,9 @@ func (m ComposeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.err = err
 					} else {
 						m.attachInput.SetValue("")
+						m.completions = []string{}
+						m.completionIndex = -1
+						m.lastCompletionPath = ""
 					}
 				} else {
 					m.step = stepPreview
@@ -237,6 +246,30 @@ func (m ComposeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			}
+		case "tab":
+			if m.step == stepAttachments {
+				currentPath := m.attachInput.Value()
+				if currentPath == "" {
+					return m, nil
+				}
+
+				completion, completions, index := getNextCompletion(currentPath, m.completions, m.completionIndex)
+
+				if completion != currentPath {
+					m.attachInput.SetValue(completion)
+					m.completions = completions
+					m.completionIndex = index
+					m.lastCompletionPath = currentPath
+				} else if len(completions) > 1 {
+					commonPrefixPath := getCommonPrefix(currentPath)
+					if commonPrefixPath != currentPath {
+						m.attachInput.SetValue(commonPrefixPath)
+						m.completions = []string{}
+						m.completionIndex = -1
+					}
+				}
+				return m, nil
+			}
 		}
 	}
 
@@ -250,7 +283,14 @@ func (m ComposeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case stepBody:
 		m.bodyInput, cmd = m.bodyInput.Update(msg)
 	case stepAttachments:
+		oldValue := m.attachInput.Value()
 		m.attachInput, cmd = m.attachInput.Update(msg)
+		newValue := m.attachInput.Value()
+
+		if oldValue != newValue && newValue != m.lastCompletionPath {
+			m.completions = []string{}
+			m.completionIndex = -1
+		}
 	}
 
 	return m, cmd
@@ -363,7 +403,7 @@ func (m ComposeModel) View() string {
 			m.err = nil
 		}
 
-		helpText := "enter: add file"
+		helpText := "tab: autocomplete • enter: add file"
 		if len(m.draft.Attachments) > 0 {
 			helpText += " • up/down: select • backspace: remove"
 		}
