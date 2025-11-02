@@ -59,7 +59,7 @@ func FetchEmails(cfg *config.IMAPConfig, filter models.InboxFilter) ([]models.Em
 	messages := make(chan *imap.Message, 10)
 	done := make(chan error, 1)
 
-	items := []imap.FetchItem{imap.FetchEnvelope}
+	items := []imap.FetchItem{imap.FetchEnvelope, imap.FetchUid}
 
 	go func() {
 		done <- c.Fetch(seqSet, items, messages)
@@ -89,6 +89,8 @@ func parseEnvelope(msg *imap.Message) models.Email {
 		email.Subject = msg.Envelope.Subject
 		email.Date = msg.Envelope.Date.Format("Mon, 02 Jan 2006 15:04:05 -0700")
 	}
+
+	email.UID = msg.Uid
 
 	return email
 }

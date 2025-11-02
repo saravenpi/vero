@@ -129,9 +129,9 @@ func (m InboxModel) fetchEmailsCmd() tea.Cmd {
 	}
 }
 
-func (m InboxModel) fetchBodyCmd(from, subject string) tea.Cmd {
+func (m InboxModel) fetchBodyCmd(uid uint32) tea.Cmd {
 	return func() tea.Msg {
-		body, attachments, err := email.FetchEmailBodyAndAttachments(&m.account.IMAP, from, subject)
+		body, attachments, err := email.FetchEmailBodyAndAttachments(&m.account.IMAP, uid)
 		if err != nil {
 			return emailBodyFetchedMsg{body: "", attachments: nil, err: err}
 		}
@@ -294,7 +294,7 @@ func (m InboxModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.loadingBody = true
 						return m, tea.Batch(
 							m.spinner.Tick,
-							m.fetchBodyCmd(selectedEmail.From, selectedEmail.Subject),
+							m.fetchBodyCmd(selectedEmail.UID),
 						)
 					}
 

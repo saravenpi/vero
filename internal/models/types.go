@@ -20,6 +20,7 @@ type Email struct {
 	Body        string       `yaml:"body"`
 	Timestamp   time.Time    `yaml:"timestamp"`
 	Attachments []Attachment `yaml:"attachments,omitempty"`
+	UID         uint32       `yaml:"-"`
 }
 
 // Section represents the current section of the application.
