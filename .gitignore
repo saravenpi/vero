@@ -53,3 +53,4 @@ tmp/
 # Code coverage
 coverage/
 *.lcov
+*.eml
