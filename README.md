@@ -5,13 +5,16 @@ A fast, glamorous terminal-based email client built with Go and [Charmbracelet](
 ## Features
 
 - **Multiple Accounts**: Manage multiple email accounts from a single interface
-- **Inbox Management**: View and read emails from any IMAP-compatible server
+- **Inbox Management**: View and read emails from any IMAP-compatible server with filtering (unseen/seen/all)
 - **Email Composition**: Write and send emails with an intuitive TUI
+- **External Editor Support**: Use your favorite editor (neovim, vim, nano) to compose email bodies
+- **Attachment Support**: Add files to your emails with path autocompletion
 - **Sent Folder**: Browse your locally stored sent emails
 - **YAML Database**: Emails are stored locally as YAML files for easy access
 - **Beautiful TUI**: Built with Bubble Tea, Bubbles, and Lip Gloss
 - **Keyboard Navigation**: Full keyboard control with vim-style bindings
 - **IMAP/SMTP Support**: Works with any email provider that supports IMAP and SMTP
+- **Configurable**: Customizable download folder, default inbox view, and editor preferences
 
 ## Prerequisites
 
@@ -57,6 +60,7 @@ go install
 Create a `~/.vero.yml` file in your home directory with your email accounts:
 
 ```yaml
+# Email accounts configuration
 accounts:
   - email: your@email.com
     imap:
@@ -78,9 +82,32 @@ accounts:
     smtp:
       password: work-password
       host: smtp.gmail.com
+
+# Optional global settings
+editor: neovim                   # Optional: External editor for composing emails (neovim, vim, nano, etc.)
+download_folder: ~/Downloads     # Optional: Folder for downloading attachments (defaults to ~/Downloads)
+default_inbox_view: all          # Optional: Default inbox filter (unseen, seen, or all)
 ```
 
-**Note**: The `user` and `port` fields are optional. If not specified, `user` defaults to the account email and ports default to 993 (IMAP) and 465 (SMTP).
+#### Configuration Options
+
+**Account Settings** (required):
+- `email`: Your email address
+- `imap.password`: IMAP password
+- `imap.host`: IMAP server hostname
+- `imap.user`: IMAP username (optional, defaults to email)
+- `imap.port`: IMAP port (optional, defaults to 993)
+- `smtp.password`: SMTP password
+- `smtp.host`: SMTP server hostname
+- `smtp.user`: SMTP username (optional, defaults to email)
+- `smtp.port`: SMTP port (optional, defaults to 465)
+
+**Global Settings** (optional):
+- `editor`: External editor to use for composing email bodies (e.g., `neovim`, `vim`, `nano`, `emacs`)
+  - When set, the specified editor opens in a temporary file (like git commit messages)
+  - When not set, uses the built-in textarea editor
+- `download_folder`: Directory for saving email attachments (defaults to `~/Downloads`)
+- `default_inbox_view`: Initial inbox filter (`unseen`, `seen`, or `all`; defaults to `all`)
 
 ## Usage
 
@@ -123,9 +150,12 @@ Follow the interactive prompts:
 1. **To**: Enter recipient email address (required)
 2. **CC**: Enter CC recipients (optional)
 3. **Subject**: Enter email subject (required)
-4. **Body**: Type your message (press Ctrl+D to finish)
-5. **Preview**: Review your email
-6. **Send**: Press Enter to send or ESC to edit
+4. **Body**: Write your message
+   - If `editor` is configured: Your external editor will open automatically
+   - If not configured: Use the built-in text area (press Ctrl+D to finish)
+5. **Attachments**: Add files to attach (optional, press Enter without input to skip)
+6. **Preview**: Review your email
+7. **Send**: Press Enter to send or ESC to edit
 
 ### Sent Folder
 
