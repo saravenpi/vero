@@ -178,9 +178,11 @@ func extractTextAndAttachmentsFromParts(mr *mail.Reader) (plainText string, html
 						hasContent = true
 					}
 					attachments = append(attachments, nestedAttachments...)
+				} else {
+					io.Copy(io.Discard, part.Body)
 				}
-			} else if strings.HasPrefix(contentType, "image/") {
-				io.ReadAll(part.Body)
+			} else {
+				io.Copy(io.Discard, part.Body)
 			}
 
 		case *mail.AttachmentHeader:
@@ -199,6 +201,8 @@ func extractTextAndAttachmentsFromParts(mr *mail.Reader) (plainText string, html
 						hasContent = true
 					}
 					attachments = append(attachments, nestedAttachments...)
+				} else {
+					io.Copy(io.Discard, part.Body)
 				}
 			} else {
 				if !isInlineImage(h) {
@@ -207,7 +211,7 @@ func extractTextAndAttachmentsFromParts(mr *mail.Reader) (plainText string, html
 						attachments = append(attachments, *attachment)
 					}
 				} else {
-					io.ReadAll(part.Body)
+					io.Copy(io.Discard, part.Body)
 				}
 			}
 		}
