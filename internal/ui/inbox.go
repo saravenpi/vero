@@ -21,8 +21,9 @@ import (
 )
 
 type emailsFetchedMsg struct {
-	emails []models.Email
-	err    error
+	emails       []models.Email
+	err          error
+	isAutoRefresh bool
 }
 
 type emailBodyFetchedMsg struct {
@@ -30,6 +31,8 @@ type emailBodyFetchedMsg struct {
 	attachments []models.Attachment
 	err         error
 }
+
+type refreshTickMsg struct{}
 
 type emailItem struct {
 	email models.Email
@@ -170,18 +173,46 @@ func NewInboxModel(cfg *config.VeroConfig, account *config.Account) InboxModel {
 	return m
 }
 
-func (m InboxModel) Init() tea.Cmd {
-	return tea.Batch(m.spinner.Tick, m.fetchEmailsCmd())
+func (m InboxModel) mergeEmails(existing []models.Email, newEmails []models.Email) []models.Email {
+	uidMap := make(map[uint32]bool)
+	for _, em := range existing {
+		uidMap[em.UID] = true
+	}
+
+	merged := make([]models.Email, len(existing))
+	copy(merged, existing)
+
+	for _, em := range newEmails {
+		if !uidMap[em.UID] {
+			merged = append(merged, em)
+		}
+	}
+
+	return merged
 }
 
-func (m InboxModel) fetchEmailsCmd() tea.Cmd {
+func (m InboxModel) Init() tea.Cmd {
+	cmds := []tea.Cmd{m.spinner.Tick, m.fetchEmailsCmd(false)}
+	if m.cfg.AutoRefresh.Seconds > 0 {
+		cmds = append(cmds, m.tickCmd())
+	}
+	return tea.Batch(cmds...)
+}
+
+func (m InboxModel) fetchEmailsCmd(isAutoRefresh bool) tea.Cmd {
 	return func() tea.Msg {
 		emails, err := email.FetchEmails(&m.account.IMAP, m.filter)
 		if err != nil {
-			return emailsFetchedMsg{emails: nil, err: err}
+			return emailsFetchedMsg{emails: nil, err: err, isAutoRefresh: isAutoRefresh}
 		}
-		return emailsFetchedMsg{emails: emails, err: nil}
+		return emailsFetchedMsg{emails: emails, err: nil, isAutoRefresh: isAutoRefresh}
 	}
+}
+
+func (m InboxModel) tickCmd() tea.Cmd {
+	return tea.Tick(time.Duration(m.cfg.AutoRefresh.Seconds)*time.Second, func(t time.Time) tea.Msg {
+		return refreshTickMsg{}
+	})
 }
 
 func (m InboxModel) fetchBodyCmd(uid uint32) tea.Cmd {
@@ -248,18 +279,35 @@ func (m InboxModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case emailsFetchedMsg:
 		m.loading = false
 		if msg.err != nil {
-			m.err = msg.err
+			if !msg.isAutoRefresh {
+				m.err = msg.err
+			}
 			return m, nil
 		}
-		m.emails = msg.emails
 
-		items := make([]list.Item, len(msg.emails))
-		for i, em := range msg.emails {
+		if msg.isAutoRefresh {
+			m.emails = m.mergeEmails(m.emails, msg.emails)
+		} else {
+			m.emails = msg.emails
+		}
+
+		items := make([]list.Item, len(m.emails))
+		for i, em := range m.emails {
 			items[i] = emailItem{email: em, index: i}
 		}
 		m.list.SetItems(items)
 		m.list.Title = fmt.Sprintf("Inbox (%s) - %d emails", m.filter.String(), len(items))
 		return m, nil
+
+	case refreshTickMsg:
+		cmds := []tea.Cmd{}
+		if m.viewMode == models.ViewList && !m.loading {
+			cmds = append(cmds, m.fetchEmailsCmd(true))
+		}
+		if m.cfg.AutoRefresh.Seconds > 0 {
+			cmds = append(cmds, m.tickCmd())
+		}
+		return m, tea.Batch(cmds...)
 
 	case emailBodyFetchedMsg:
 		m.loadingBody = false
@@ -307,27 +355,27 @@ func (m InboxModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.viewMode == models.ViewList {
 				m.filter = models.FilterUnseen
 				m.loading = true
-				return m, tea.Batch(m.spinner.Tick, m.fetchEmailsCmd())
+				return m, tea.Batch(m.spinner.Tick, m.fetchEmailsCmd(false))
 			}
 
 		case "s":
 			if m.viewMode == models.ViewList {
 				m.filter = models.FilterSeen
 				m.loading = true
-				return m, tea.Batch(m.spinner.Tick, m.fetchEmailsCmd())
+				return m, tea.Batch(m.spinner.Tick, m.fetchEmailsCmd(false))
 			}
 
 		case "a":
 			if m.viewMode == models.ViewList {
 				m.filter = models.FilterAll
 				m.loading = true
-				return m, tea.Batch(m.spinner.Tick, m.fetchEmailsCmd())
+				return m, tea.Batch(m.spinner.Tick, m.fetchEmailsCmd(false))
 			}
 
 		case "r":
 			if m.viewMode == models.ViewList {
 				m.loading = true
-				return m, tea.Batch(m.spinner.Tick, m.fetchEmailsCmd())
+				return m, tea.Batch(m.spinner.Tick, m.fetchEmailsCmd(false))
 			}
 
 		case "enter":

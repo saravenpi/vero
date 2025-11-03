@@ -38,6 +38,12 @@ The application requires a `~/.vero.yml` configuration file with account setting
 - Optional `editor` field to specify an external editor for composing email bodies (e.g., `neovim`, `vim`, `nano`)
   - If set, the specified editor will open in a temporary file when composing the email body (similar to git commit editor)
   - If not set, the built-in textarea editor is used
+- Optional `auto_refresh` field to enable automatic email refreshing in the inbox:
+  - Not set or `0`: No auto-refresh (default)
+  - `false`: No auto-refresh
+  - `true`: Auto-refresh every 10 seconds
+  - Integer value (e.g., `30`): Auto-refresh every N seconds
+  - When enabled, new emails are automatically fetched and merged into the list without disrupting the current view
 
 ## Architecture
 

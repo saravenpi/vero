@@ -8,12 +8,44 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// AutoRefresh holds the auto-refresh configuration.
+// It can be: not set (0 seconds), false (0 seconds), true (10 seconds), or a number in seconds.
+type AutoRefresh struct {
+	Seconds int
+}
+
+// UnmarshalYAML implements custom unmarshaling for AutoRefresh.
+func (a *AutoRefresh) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var boolVal bool
+	if err := unmarshal(&boolVal); err == nil {
+		if boolVal {
+			a.Seconds = 10
+		} else {
+			a.Seconds = 0
+		}
+		return nil
+	}
+
+	var intVal int
+	if err := unmarshal(&intVal); err == nil {
+		if intVal < 0 {
+			a.Seconds = 0
+		} else {
+			a.Seconds = intVal
+		}
+		return nil
+	}
+
+	return fmt.Errorf("auto_refresh must be a boolean or integer")
+}
+
 // VeroConfig represents the main configuration file structure.
 type VeroConfig struct {
-	Accounts       []Account `yaml:"accounts"`
-	DownloadFolder string    `yaml:"download_folder,omitempty"`
-	InboxView      string    `yaml:"inbox_view,omitempty"`
-	Editor         string    `yaml:"editor,omitempty"`
+	Accounts       []Account   `yaml:"accounts"`
+	DownloadFolder string      `yaml:"download_folder,omitempty"`
+	InboxView      string      `yaml:"inbox_view,omitempty"`
+	Editor         string      `yaml:"editor,omitempty"`
+	AutoRefresh    AutoRefresh `yaml:"auto_refresh,omitempty"`
 }
 
 // Account represents a single email account configuration.
