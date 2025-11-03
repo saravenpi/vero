@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -44,7 +45,61 @@ func (i emailItem) Title() string {
 }
 
 func (i emailItem) Description() string {
-	return i.email.From
+	timeAgo := formatTimeAgo(i.email.Timestamp)
+	return fmt.Sprintf("%s • %s", i.email.From, timeAgo)
+}
+
+func formatTimeAgo(t time.Time) string {
+	if t.IsZero() {
+		return "unknown"
+	}
+
+	now := time.Now()
+	duration := now.Sub(t)
+
+	if duration < time.Minute {
+		return "just now"
+	}
+	if duration < 2*time.Minute {
+		return "1 minute ago"
+	}
+	if duration < time.Hour {
+		minutes := int(duration.Minutes())
+		return fmt.Sprintf("%d minutes ago", minutes)
+	}
+	if duration < 2*time.Hour {
+		return "1 hour ago"
+	}
+	if duration < 24*time.Hour {
+		hours := int(duration.Hours())
+		return fmt.Sprintf("%d hours ago", hours)
+	}
+	if duration < 48*time.Hour {
+		return "1 day ago"
+	}
+	if duration < 7*24*time.Hour {
+		days := int(duration.Hours() / 24)
+		return fmt.Sprintf("%d days ago", days)
+	}
+	if duration < 14*24*time.Hour {
+		return "1 week ago"
+	}
+	if duration < 30*24*time.Hour {
+		weeks := int(duration.Hours() / 24 / 7)
+		return fmt.Sprintf("%d weeks ago", weeks)
+	}
+	if duration < 60*24*time.Hour {
+		return "1 month ago"
+	}
+	if duration < 365*24*time.Hour {
+		months := int(duration.Hours() / 24 / 30)
+		return fmt.Sprintf("%d months ago", months)
+	}
+	if duration < 2*365*24*time.Hour {
+		return "1 year ago"
+	}
+	years := int(duration.Hours() / 24 / 365)
+	return fmt.Sprintf("%d years ago", years)
 }
 
 // InboxModel manages the inbox view with email list and detail views.
@@ -436,6 +491,12 @@ func (m InboxModel) renderDetail() string {
 	s := titleStyle.Render("Email Details") + "\n\n"
 
 	s += emailHeaderStyle.Render("  From: ") + normalStyle.Render(email.From) + "\n"
+	if email.To != "" {
+		s += emailHeaderStyle.Render("  To: ") + normalStyle.Render(email.To) + "\n"
+	}
+	if email.CC != "" {
+		s += emailHeaderStyle.Render("  CC: ") + normalStyle.Render(email.CC) + "\n"
+	}
 	s += emailHeaderStyle.Render("  Subject: ") + normalStyle.Render(email.Subject) + "\n"
 	s += emailHeaderStyle.Render("  Date: ") + normalStyle.Render(email.Date) + "\n"
 

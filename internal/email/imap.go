@@ -86,8 +86,23 @@ func parseEnvelope(msg *imap.Message) models.Email {
 		if len(msg.Envelope.From) > 0 {
 			email.From = formatAddress(msg.Envelope.From[0])
 		}
+		if len(msg.Envelope.To) > 0 {
+			toAddrs := make([]string, len(msg.Envelope.To))
+			for i, addr := range msg.Envelope.To {
+				toAddrs[i] = formatAddress(addr)
+			}
+			email.To = strings.Join(toAddrs, ", ")
+		}
+		if len(msg.Envelope.Cc) > 0 {
+			ccAddrs := make([]string, len(msg.Envelope.Cc))
+			for i, addr := range msg.Envelope.Cc {
+				ccAddrs[i] = formatAddress(addr)
+			}
+			email.CC = strings.Join(ccAddrs, ", ")
+		}
 		email.Subject = msg.Envelope.Subject
 		email.Date = msg.Envelope.Date.Format("Mon, 02 Jan 2006 15:04:05 -0700")
+		email.Timestamp = msg.Envelope.Date
 	}
 
 	email.UID = msg.Uid
