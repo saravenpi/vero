@@ -86,7 +86,7 @@ accounts:
 # Optional global settings
 editor: nvim                   # Optional: External editor for composing emails (nvim, vim, nano, etc.)
 download_folder: ~/Downloads     # Optional: Folder for downloading attachments (defaults to ~/Downloads)
-default_inbox_view: all          # Optional: Default inbox filter (unseen, seen, or all)
+inbox_view: all                  # Optional: Default inbox filter (unseen, seen, or all)
 ```
 
 #### Configuration Options
@@ -107,7 +107,7 @@ default_inbox_view: all          # Optional: Default inbox filter (unseen, seen,
   - When set, the specified editor opens in a temporary file (like git commit messages)
   - When not set, uses the built-in textarea editor
 - `download_folder`: Directory for saving email attachments (defaults to `~/Downloads`)
-- `default_inbox_view`: Initial inbox filter (`unseen`, `seen`, or `all`; defaults to `all`)
+- `inbox_view`: Initial inbox filter (`unseen`, `seen`, or `all`; defaults to `all`)
 
 ## Usage
 
