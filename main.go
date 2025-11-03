@@ -60,7 +60,7 @@ Configuration:
 
   # Global settings (optional)
   download_folder: ~/Downloads          # Default: ~/Downloads
-  default_inbox_view: all                # Options: unseen, seen, all (Default: all)
+  inbox_view: all                        # Options: unseen, seen, all (Default: all)
 
   # Account configuration
   accounts:

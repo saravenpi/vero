@@ -10,10 +10,10 @@ import (
 
 // VeroConfig represents the main configuration file structure.
 type VeroConfig struct {
-	Accounts         []Account `yaml:"accounts"`
-	DownloadFolder   string    `yaml:"download_folder,omitempty"`
-	DefaultInboxView string    `yaml:"default_inbox_view,omitempty"`
-	Editor           string    `yaml:"editor,omitempty"`
+	Accounts       []Account `yaml:"accounts"`
+	DownloadFolder string    `yaml:"download_folder,omitempty"`
+	InboxView      string    `yaml:"inbox_view,omitempty"`
+	Editor         string    `yaml:"editor,omitempty"`
 }
 
 // Account represents a single email account configuration.
@@ -92,12 +92,12 @@ func Load() (*VeroConfig, error) {
 		cfg.DownloadFolder = expandPath(cfg.DownloadFolder, home)
 	}
 
-	if cfg.DefaultInboxView == "" {
-		cfg.DefaultInboxView = "all"
+	if cfg.InboxView == "" {
+		cfg.InboxView = "all"
 	} else {
 		validViews := map[string]bool{"unseen": true, "seen": true, "all": true}
-		if !validViews[cfg.DefaultInboxView] {
-			return nil, fmt.Errorf("invalid default_inbox_view '%s', must be 'unseen', 'seen', or 'all'", cfg.DefaultInboxView)
+		if !validViews[cfg.InboxView] {
+			return nil, fmt.Errorf("invalid inbox_view '%s', must be 'unseen', 'seen', or 'all'", cfg.InboxView)
 		}
 	}
 

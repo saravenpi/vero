@@ -145,7 +145,7 @@ func NewInboxModel(cfg *config.VeroConfig, account *config.Account) InboxModel {
 	vp.HighPerformanceRendering = false
 
 	defaultFilter := models.FilterAll
-	switch cfg.DefaultInboxView {
+	switch cfg.InboxView {
 	case "unseen":
 		defaultFilter = models.FilterUnseen
 	case "seen":
