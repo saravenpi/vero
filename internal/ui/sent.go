@@ -91,7 +91,6 @@ func (m SentModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case spinner.TickMsg:
-		// Only update spinner if we're actually loading
 		if m.loading || (m.viewMode == models.ViewDetail && !m.viewportReady) {
 			var cmd tea.Cmd
 			m.spinner, cmd = m.spinner.Update(msg)

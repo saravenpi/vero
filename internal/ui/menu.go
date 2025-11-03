@@ -24,6 +24,7 @@ type MenuModel struct {
 	loading     bool
 }
 
+// NewMenuModel creates a new menu model for the specified account.
 func NewMenuModel(cfg *config.VeroConfig, account *config.Account) MenuModel {
 	return MenuModel{
 		cfg:         cfg,

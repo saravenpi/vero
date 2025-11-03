@@ -253,7 +253,6 @@ func (m InboxModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.emails = msg.emails
 
-		// Convert emails to list items
 		items := make([]list.Item, len(msg.emails))
 		for i, em := range msg.emails {
 			items[i] = emailItem{email: em, index: i}
@@ -277,7 +276,6 @@ func (m InboxModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case spinner.TickMsg:
-		// Only update spinner if we're actually loading
 		if m.loading || m.loadingBody || (m.viewMode == models.ViewDetail && !m.viewportReady) {
 			var cmd tea.Cmd
 			m.spinner, cmd = m.spinner.Update(msg)
@@ -286,24 +284,20 @@ func (m InboxModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		// Always allow quit
 		if msg.String() == "ctrl+c" || msg.String() == "q" {
 			return m, tea.Quit
 		}
 
-		// Handle ESC - always allow going back
 		if msg.String() == "esc" {
 			if m.viewMode == models.ViewDetail {
 				m.viewMode = models.ViewList
 				m.err = nil
 				return m, nil
 			}
-			// Go back to menu
 			menu := NewMenuModel(m.cfg, m.account)
 			return menu, menu.Init()
 		}
 
-		// Don't process other keys while loading
 		if m.loading || m.loadingBody {
 			return m, nil
 		}
@@ -396,13 +390,11 @@ func (m InboxModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		default:
-			// Let the list handle its own navigation in list view
 			if m.viewMode == models.ViewList {
 				var cmd tea.Cmd
 				m.list, cmd = m.list.Update(msg)
 				return m, cmd
 			}
-			// Handle viewport navigation in detail view
 			if m.viewMode == models.ViewDetail {
 				var cmd tea.Cmd
 				m.viewport, cmd = m.viewport.Update(msg)
