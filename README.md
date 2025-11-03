@@ -7,7 +7,7 @@ A fast, glamorous terminal-based email client built with Go and [Charmbracelet](
 - **Multiple Accounts**: Manage multiple email accounts from a single interface
 - **Inbox Management**: View and read emails from any IMAP-compatible server with filtering (unseen/seen/all)
 - **Email Composition**: Write and send emails with an intuitive TUI
-- **External Editor Support**: Use your favorite editor (neovim, vim, nano) to compose email bodies
+- **External Editor Support**: Use your favorite editor (nvim, vim, nano) to compose email bodies
 - **Attachment Support**: Add files to your emails with path autocompletion
 - **Sent Folder**: Browse your locally stored sent emails
 - **YAML Database**: Emails are stored locally as YAML files for easy access
@@ -84,7 +84,7 @@ accounts:
       host: smtp.gmail.com
 
 # Optional global settings
-editor: neovim                   # Optional: External editor for composing emails (neovim, vim, nano, etc.)
+editor: nvim                   # Optional: External editor for composing emails (nvim, vim, nano, etc.)
 download_folder: ~/Downloads     # Optional: Folder for downloading attachments (defaults to ~/Downloads)
 default_inbox_view: all          # Optional: Default inbox filter (unseen, seen, or all)
 ```
@@ -103,7 +103,7 @@ default_inbox_view: all          # Optional: Default inbox filter (unseen, seen,
 - `smtp.port`: SMTP port (optional, defaults to 465)
 
 **Global Settings** (optional):
-- `editor`: External editor to use for composing email bodies (e.g., `neovim`, `vim`, `nano`, `emacs`)
+- `editor`: External editor to use for composing email bodies (e.g., `nvim`, `vim`, `nano`, `emacs`)
   - When set, the specified editor opens in a temporary file (like git commit messages)
   - When not set, uses the built-in textarea editor
 - `download_folder`: Directory for saving email attachments (defaults to `~/Downloads`)

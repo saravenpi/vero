@@ -5,34 +5,59 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/saravenpi/vero/internal/config"
+	"github.com/saravenpi/vero/internal/email"
 	"github.com/saravenpi/vero/internal/models"
 )
 
-// MenuModel represents the main menu view where users select sections.
-type MenuModel struct {
-	cfg      *config.VeroConfig
-	account  *config.Account
-	choices  []string
-	cursor   int
-	selected models.Section
+type unseenCountMsg struct {
+	count int
+	err   error
 }
 
-// NewMenuModel creates a new main menu model for the specified account.
+type MenuModel struct {
+	cfg         *config.VeroConfig
+	account     *config.Account
+	choices     []string
+	cursor      int
+	selected    models.Section
+	unseenCount int
+	loading     bool
+}
+
 func NewMenuModel(cfg *config.VeroConfig, account *config.Account) MenuModel {
 	return MenuModel{
-		cfg:     cfg,
-		account: account,
-		choices: []string{"Inbox", "Sent", "Write"},
-		cursor:  0,
+		cfg:         cfg,
+		account:     account,
+		choices:     []string{"Inbox", "Sent", "Write"},
+		cursor:      0,
+		unseenCount: -1,
+		loading:     true,
 	}
 }
 
 func (m MenuModel) Init() tea.Cmd {
-	return nil
+	return m.fetchUnseenCountCmd()
+}
+
+func (m MenuModel) fetchUnseenCountCmd() tea.Cmd {
+	return func() tea.Msg {
+		emails, err := email.FetchEmails(&m.account.IMAP, models.FilterUnseen)
+		if err != nil {
+			return unseenCountMsg{count: 0, err: err}
+		}
+		return unseenCountMsg{count: len(emails), err: nil}
+	}
 }
 
 func (m MenuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case unseenCountMsg:
+		m.loading = false
+		if msg.err == nil {
+			m.unseenCount = msg.count
+		}
+		return m, nil
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
@@ -71,13 +96,19 @@ func (m MenuModel) View() string {
 
 	for i, choice := range m.choices {
 		cursor := " "
+		displayChoice := choice
+
+		if i == 0 && m.unseenCount >= 0 {
+			displayChoice = fmt.Sprintf("%s (%d)", choice, m.unseenCount)
+		}
+
 		if m.cursor == i {
 			cursor = ">"
-			choice = selectedStyle.Render(choice)
+			displayChoice = selectedStyle.Render(displayChoice)
 		} else {
-			choice = normalStyle.Render(choice)
+			displayChoice = normalStyle.Render(displayChoice)
 		}
-		s += fmt.Sprintf("  %s %s\n", cursor, choice)
+		s += fmt.Sprintf("  %s %s\n", cursor, displayChoice)
 	}
 
 	s += "\n" + helpStyle.Render("↑/↓ or j/k: navigate • enter: select • q: quit")
