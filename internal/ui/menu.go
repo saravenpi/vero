@@ -63,6 +63,12 @@ func (m MenuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 
+		case "esc":
+			if len(m.cfg.Accounts) > 1 {
+				accountSelection := NewAccountSelectionModel(m.cfg)
+				return accountSelection, accountSelection.Init()
+			}
+
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
@@ -111,7 +117,12 @@ func (m MenuModel) View() string {
 		s += fmt.Sprintf("  %s %s\n", cursor, displayChoice)
 	}
 
-	s += "\n" + helpStyle.Render("↑/↓ or j/k: navigate • enter: select • q: quit")
+	helpText := "↑/↓ or j/k: navigate • enter: select"
+	if len(m.cfg.Accounts) > 1 {
+		helpText += " • esc: accounts"
+	}
+	helpText += " • q: quit"
+	s += "\n" + helpStyle.Render(helpText)
 
 	return s
 }
