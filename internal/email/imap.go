@@ -316,3 +316,36 @@ func extractAttachment(header *mail.AttachmentHeader, body io.Reader) *models.At
 		FilePath:    filePath,
 	}
 }
+
+// DeleteEmail deletes an email from the IMAP server by UID.
+func DeleteEmail(cfg *config.IMAPConfig, uid uint32) error {
+	c, err := client.DialTLS(fmt.Sprintf("%s:%d", cfg.Host, cfg.Port), nil)
+	if err != nil {
+		return fmt.Errorf("failed to connect: %w", err)
+	}
+	defer c.Logout()
+
+	if err := c.Login(cfg.User, cfg.Password); err != nil {
+		return fmt.Errorf("failed to login: %w", err)
+	}
+
+	_, err = c.Select("INBOX", false)
+	if err != nil {
+		return fmt.Errorf("failed to select INBOX: %w", err)
+	}
+
+	seqSet := new(imap.SeqSet)
+	seqSet.AddNum(uid)
+
+	item := imap.FormatFlagsOp(imap.AddFlags, true)
+	flags := []interface{}{imap.DeletedFlag}
+	if err := c.UidStore(seqSet, item, flags, nil); err != nil {
+		return fmt.Errorf("failed to mark email as deleted: %w", err)
+	}
+
+	if err := c.Expunge(nil); err != nil {
+		return fmt.Errorf("failed to expunge deleted email: %w", err)
+	}
+
+	return nil
+}

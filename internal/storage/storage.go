@@ -184,3 +184,41 @@ func IsEmailSeen(accountEmail, from, subject string) (bool, error) {
 
 	return false, nil
 }
+
+// DeleteSeenEmail removes a seen email from local storage.
+func DeleteSeenEmail(accountEmail string, email models.Email) error {
+	accountPath, err := GetAccountDir(accountEmail)
+	if err != nil {
+		return err
+	}
+
+	seenPath := filepath.Join(accountPath, seenDir)
+
+	files, err := os.ReadDir(seenPath)
+	if err != nil {
+		return err
+	}
+
+	for _, file := range files {
+		if file.IsDir() || !strings.HasSuffix(file.Name(), ".yml") {
+			continue
+		}
+
+		filePath := filepath.Join(seenPath, file.Name())
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			continue
+		}
+
+		var storedEmail models.Email
+		if err := yaml.Unmarshal(data, &storedEmail); err != nil {
+			continue
+		}
+
+		if storedEmail.From == email.From && storedEmail.Subject == email.Subject {
+			return os.Remove(filePath)
+		}
+	}
+
+	return nil
+}

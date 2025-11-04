@@ -10,6 +10,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -30,6 +31,10 @@ type emailBodyFetchedMsg struct {
 	body        string
 	attachments []models.Attachment
 	err         error
+}
+
+type emailDeletedMsg struct {
+	err error
 }
 
 type refreshTickMsg struct{}
@@ -107,22 +112,27 @@ func formatTimeAgo(t time.Time) string {
 
 // InboxModel manages the inbox view with email list and detail views.
 type InboxModel struct {
-	cfg               *config.VeroConfig
-	account           *config.Account
-	emails            []models.Email
-	list              list.Model
-	viewMode          models.ViewMode
-	filter            models.InboxFilter
-	loading           bool
-	err               error
-	selectedIdx       int
-	selectedAttachIdx int
-	spinner           spinner.Model
-	loadingBody       bool
-	viewport          viewport.Model
-	viewportReady     bool
-	windowWidth       int
-	windowHeight      int
+	cfg                  *config.VeroConfig
+	account              *config.Account
+	emails               []models.Email
+	filteredEmails       []models.Email
+	list                 list.Model
+	viewMode             models.ViewMode
+	filter               models.InboxFilter
+	loading              bool
+	err                  error
+	selectedIdx          int
+	selectedAttachIdx    int
+	spinner              spinner.Model
+	loadingBody          bool
+	viewport             viewport.Model
+	viewportReady        bool
+	windowWidth          int
+	windowHeight         int
+	showingDeleteConfirm bool
+	deleting             bool
+	searchMode           bool
+	searchInput          textinput.Model
 }
 
 // NewInboxModel creates a new inbox model for the specified account.
@@ -147,6 +157,11 @@ func NewInboxModel(cfg *config.VeroConfig, account *config.Account) InboxModel {
 	vp := viewport.New(80, 20)
 	vp.HighPerformanceRendering = false
 
+	ti := textinput.New()
+	ti.Placeholder = "Search by sender or subject..."
+	ti.CharLimit = 100
+	ti.Width = 50
+
 	defaultFilter := models.FilterAll
 	switch cfg.InboxView {
 	case "unseen":
@@ -169,6 +184,7 @@ func NewInboxModel(cfg *config.VeroConfig, account *config.Account) InboxModel {
 		viewportReady: true,
 		windowWidth:   80,
 		windowHeight:  30,
+		searchInput:   ti,
 	}
 	return m
 }
@@ -189,6 +205,41 @@ func (m InboxModel) mergeEmails(existing []models.Email, newEmails []models.Emai
 	}
 
 	return merged
+}
+
+func (m InboxModel) filterEmails(query string) []models.Email {
+	if query == "" {
+		return m.emails
+	}
+
+	query = strings.ToLower(query)
+	filtered := []models.Email{}
+
+	for _, email := range m.emails {
+		fromLower := strings.ToLower(email.From)
+		subjectLower := strings.ToLower(email.Subject)
+
+		if strings.Contains(fromLower, query) || strings.Contains(subjectLower, query) {
+			filtered = append(filtered, email)
+		}
+	}
+
+	return filtered
+}
+
+func (m *InboxModel) updateFilteredList() {
+	m.filteredEmails = m.filterEmails(m.searchInput.Value())
+	items := make([]list.Item, len(m.filteredEmails))
+	for i, em := range m.filteredEmails {
+		items[i] = emailItem{email: em, index: i}
+	}
+	m.list.SetItems(items)
+
+	searchInfo := ""
+	if m.searchMode && m.searchInput.Value() != "" {
+		searchInfo = fmt.Sprintf(" (filtered: %d/%d)", len(m.filteredEmails), len(m.emails))
+	}
+	m.list.Title = fmt.Sprintf("Inbox (%s) - %d emails%s", m.filter.String(), len(m.emails), searchInfo)
 }
 
 func (m InboxModel) Init() tea.Cmd {
@@ -264,6 +315,13 @@ func (m InboxModel) downloadAttachmentCmd(attachment models.Attachment) tea.Cmd 
 	}
 }
 
+func (m InboxModel) deleteEmailCmd(uid uint32) tea.Cmd {
+	return func() tea.Msg {
+		err := email.DeleteEmail(&m.account.IMAP, uid)
+		return emailDeletedMsg{err: err}
+	}
+}
+
 func (m InboxModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -291,12 +349,7 @@ func (m InboxModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.emails = msg.emails
 		}
 
-		items := make([]list.Item, len(m.emails))
-		for i, em := range m.emails {
-			items[i] = emailItem{email: em, index: i}
-		}
-		m.list.SetItems(items)
-		m.list.Title = fmt.Sprintf("Inbox (%s) - %d emails", m.filter.String(), len(items))
+		m.updateFilteredList()
 		return m, nil
 
 	case refreshTickMsg:
@@ -315,11 +368,47 @@ func (m InboxModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.err = msg.err
 			return m, nil
 		}
-		if m.selectedIdx >= 0 && m.selectedIdx < len(m.emails) {
-			m.emails[m.selectedIdx].Body = msg.body
-			m.emails[m.selectedIdx].Attachments = msg.attachments
+		if m.selectedIdx >= 0 && m.selectedIdx < len(m.filteredEmails) {
+			selectedEmail := m.filteredEmails[m.selectedIdx]
+
+			for i := range m.emails {
+				if m.emails[i].UID == selectedEmail.UID {
+					m.emails[i].Body = msg.body
+					m.emails[i].Attachments = msg.attachments
+					break
+				}
+			}
+
+			m.filteredEmails[m.selectedIdx].Body = msg.body
+			m.filteredEmails[m.selectedIdx].Attachments = msg.attachments
 			m.updateViewportContent()
-			go storage.SaveSeenEmail(m.account.Email, m.emails[m.selectedIdx])
+			go storage.SaveSeenEmail(m.account.Email, m.filteredEmails[m.selectedIdx])
+		}
+		return m, nil
+
+	case emailDeletedMsg:
+		m.deleting = false
+		m.showingDeleteConfirm = false
+		if msg.err != nil {
+			m.err = msg.err
+			return m, nil
+		}
+
+		if m.selectedIdx >= 0 && m.selectedIdx < len(m.filteredEmails) {
+			selectedEmail := m.filteredEmails[m.selectedIdx]
+
+			for i, email := range m.emails {
+				if email.UID == selectedEmail.UID {
+					m.emails = append(m.emails[:i], m.emails[i+1:]...)
+					break
+				}
+			}
+
+			m.updateFilteredList()
+			go storage.DeleteSeenEmail(m.account.Email, selectedEmail)
+
+			m.viewMode = models.ViewList
+			m.selectedIdx = 0
 		}
 		return m, nil
 
@@ -337,6 +426,17 @@ func (m InboxModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if msg.String() == "esc" {
+			if m.searchMode {
+				m.searchMode = false
+				m.searchInput.Blur()
+				m.searchInput.SetValue("")
+				m.updateFilteredList()
+				return m, nil
+			}
+			if m.showingDeleteConfirm {
+				m.showingDeleteConfirm = false
+				return m, nil
+			}
 			if m.viewMode == models.ViewDetail {
 				m.viewMode = models.ViewList
 				m.err = nil
@@ -346,11 +446,49 @@ func (m InboxModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return menu, menu.Init()
 		}
 
-		if m.loading || m.loadingBody {
+		if m.searchMode {
+			switch msg.String() {
+			case "enter":
+				m.searchMode = false
+				m.searchInput.Blur()
+				return m, nil
+			default:
+				var cmd tea.Cmd
+				m.searchInput, cmd = m.searchInput.Update(msg)
+				m.updateFilteredList()
+				return m, cmd
+			}
+		}
+
+		if m.showingDeleteConfirm {
+			switch msg.String() {
+			case "y", "Y":
+				if m.selectedIdx >= 0 && m.selectedIdx < len(m.filteredEmails) {
+					m.deleting = true
+					return m, tea.Batch(
+						m.spinner.Tick,
+						m.deleteEmailCmd(m.filteredEmails[m.selectedIdx].UID),
+					)
+				}
+			case "n", "N":
+				m.showingDeleteConfirm = false
+				return m, nil
+			}
+			return m, nil
+		}
+
+		if m.loading || m.loadingBody || m.deleting {
 			return m, nil
 		}
 
 		switch msg.String() {
+		case "/":
+			if m.viewMode == models.ViewList {
+				m.searchMode = true
+				m.searchInput.Focus()
+				return m, textinput.Blink
+			}
+
 		case "u":
 			if m.viewMode == models.ViewList {
 				m.filter = models.FilterUnseen
@@ -379,14 +517,14 @@ func (m InboxModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "enter":
-			if m.viewMode == models.ViewList && len(m.emails) > 0 {
+			if m.viewMode == models.ViewList && len(m.filteredEmails) > 0 {
 				if item, ok := m.list.SelectedItem().(emailItem); ok {
 					m.selectedIdx = item.index
 					m.selectedAttachIdx = 0
 					m.viewMode = models.ViewDetail
 					m.viewport.GotoTop()
 
-					selectedEmail := m.emails[item.index]
+					selectedEmail := m.filteredEmails[item.index]
 					if selectedEmail.Body == "" {
 						m.loadingBody = true
 						return m, tea.Batch(
@@ -396,14 +534,14 @@ func (m InboxModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 
 					m.updateViewportContent()
-					go storage.SaveSeenEmail(m.account.Email, m.emails[item.index])
+					go storage.SaveSeenEmail(m.account.Email, m.filteredEmails[item.index])
 					return m, nil
 				}
 			}
 
 		case "o":
-			if m.viewMode == models.ViewDetail && m.selectedIdx >= 0 && m.selectedIdx < len(m.emails) {
-				email := m.emails[m.selectedIdx]
+			if m.viewMode == models.ViewDetail && m.selectedIdx >= 0 && m.selectedIdx < len(m.filteredEmails) {
+				email := m.filteredEmails[m.selectedIdx]
 				if len(email.Attachments) > 0 && m.selectedAttachIdx >= 0 && m.selectedAttachIdx < len(email.Attachments) {
 					attachment := email.Attachments[m.selectedAttachIdx]
 					return m, m.openAttachmentCmd(attachment)
@@ -411,17 +549,23 @@ func (m InboxModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "d":
-			if m.viewMode == models.ViewDetail && m.selectedIdx >= 0 && m.selectedIdx < len(m.emails) {
-				email := m.emails[m.selectedIdx]
+			if m.viewMode == models.ViewDetail && m.selectedIdx >= 0 && m.selectedIdx < len(m.filteredEmails) {
+				email := m.filteredEmails[m.selectedIdx]
 				if len(email.Attachments) > 0 && m.selectedAttachIdx >= 0 && m.selectedAttachIdx < len(email.Attachments) {
 					attachment := email.Attachments[m.selectedAttachIdx]
 					return m, m.downloadAttachmentCmd(attachment)
 				}
 			}
 
+		case "D":
+			if m.viewMode == models.ViewDetail && m.selectedIdx >= 0 && m.selectedIdx < len(m.filteredEmails) {
+				m.showingDeleteConfirm = true
+				return m, nil
+			}
+
 		case "left", "h":
-			if m.viewMode == models.ViewDetail && m.selectedIdx >= 0 && m.selectedIdx < len(m.emails) {
-				email := m.emails[m.selectedIdx]
+			if m.viewMode == models.ViewDetail && m.selectedIdx >= 0 && m.selectedIdx < len(m.filteredEmails) {
+				email := m.filteredEmails[m.selectedIdx]
 				if len(email.Attachments) > 0 && m.selectedAttachIdx > 0 {
 					m.selectedAttachIdx--
 					return m, nil
@@ -429,8 +573,8 @@ func (m InboxModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "right", "l":
-			if m.viewMode == models.ViewDetail && m.selectedIdx >= 0 && m.selectedIdx < len(m.emails) {
-				email := m.emails[m.selectedIdx]
+			if m.viewMode == models.ViewDetail && m.selectedIdx >= 0 && m.selectedIdx < len(m.filteredEmails) {
+				email := m.filteredEmails[m.selectedIdx]
 				if len(email.Attachments) > 0 && m.selectedAttachIdx < len(email.Attachments)-1 {
 					m.selectedAttachIdx++
 					return m, nil
@@ -474,22 +618,46 @@ func (m InboxModel) View() string {
 }
 
 func (m InboxModel) renderList() string {
+	var s string
+
+	if m.searchMode {
+		searchStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("6")).
+			Bold(true)
+		s += searchStyle.Render("Search: ") + m.searchInput.View() + "\n\n"
+	}
+
 	if len(m.emails) == 0 {
-		s := titleStyle.Render(fmt.Sprintf("Inbox (%s)", m.filter.String())) + "\n\n"
+		s += titleStyle.Render(fmt.Sprintf("Inbox (%s)", m.filter.String())) + "\n\n"
 		s += normalStyle.Render("  No emails found.") + "\n"
 		s += "\n" + helpStyle.Render("u/s/a: filter • r: refresh • esc: back • q: quit")
 		return s
 	}
 
-	return m.list.View() + "\n" + helpStyle.Render("↑↓/jk: navigate • enter: read • u/s/a: filter • r: refresh • esc: back • q: quit")
+	if len(m.filteredEmails) == 0 && m.searchInput.Value() != "" {
+		s += titleStyle.Render(fmt.Sprintf("Inbox (%s)", m.filter.String())) + "\n\n"
+		s += normalStyle.Render("  No emails match your search.") + "\n"
+		s += "\n" + helpStyle.Render("esc: clear search • q: quit")
+		return s
+	}
+
+	s += m.list.View() + "\n"
+
+	if m.searchMode {
+		s += helpStyle.Render("enter: apply search • esc: cancel • type to search")
+	} else {
+		s += helpStyle.Render("↑↓/jk: navigate • enter: read • /: search • u/s/a: filter • r: refresh • esc: back • q: quit")
+	}
+
+	return s
 }
 
 func (m *InboxModel) updateViewportContent() {
-	if !m.viewportReady || m.selectedIdx < 0 || m.selectedIdx >= len(m.emails) {
+	if !m.viewportReady || m.selectedIdx < 0 || m.selectedIdx >= len(m.filteredEmails) {
 		return
 	}
 
-	email := m.emails[m.selectedIdx]
+	email := m.filteredEmails[m.selectedIdx]
 	var content strings.Builder
 
 	wrapWidth := m.viewport.Width
@@ -526,7 +694,7 @@ func (m *InboxModel) updateViewportContent() {
 }
 
 func (m InboxModel) renderDetail() string {
-	email := m.emails[m.selectedIdx]
+	email := m.filteredEmails[m.selectedIdx]
 
 	s := titleStyle.Render("Email Details") + "\n\n"
 
@@ -556,7 +724,15 @@ func (m InboxModel) renderDetail() string {
 
 	s += "\n"
 
-	if m.loadingBody {
+	if m.deleting {
+		s += fmt.Sprintf("  %s Deleting email...\n", m.spinner.View())
+	} else if m.showingDeleteConfirm {
+		confirmStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("3")).
+			Bold(true)
+		s += confirmStyle.Render("  ⚠️  Delete this email? This cannot be undone.") + "\n"
+		s += helpStyle.Render("  y: yes • n/esc: no") + "\n"
+	} else if m.loadingBody {
 		s += fmt.Sprintf("  %s Loading email content...\n", m.spinner.View())
 	} else if m.viewportReady {
 		s += m.viewport.View()
@@ -564,19 +740,21 @@ func (m InboxModel) renderDetail() string {
 		s += fmt.Sprintf("  %s Preparing view...\n", m.spinner.View())
 	}
 
-	scrollInfo := ""
-	if m.viewportReady && !m.loadingBody {
-		scrollPercent := int(m.viewport.ScrollPercent() * 100)
-		scrollInfo = fmt.Sprintf(" • %d%%", scrollPercent)
-	}
+	if !m.showingDeleteConfirm && !m.deleting {
+		scrollInfo := ""
+		if m.viewportReady && !m.loadingBody {
+			scrollPercent := int(m.viewport.ScrollPercent() * 100)
+			scrollInfo = fmt.Sprintf(" • %d%%", scrollPercent)
+		}
 
-	helpText := "↑↓/j/k: scroll"
-	if len(email.Attachments) > 0 {
-		helpText += " • ←→/h/l: select • o: open • d: download"
-	}
-	helpText += " • esc: back • q: quit" + scrollInfo
+		helpText := "↑↓/j/k: scroll"
+		if len(email.Attachments) > 0 {
+			helpText += " • ←→/h/l: select • o: open • d: download"
+		}
+		helpText += " • D: delete • esc: back • q: quit" + scrollInfo
 
-	s += "\n" + helpStyle.Render(helpText)
+		s += "\n" + helpStyle.Render(helpText)
+	}
 
 	return s
 }
