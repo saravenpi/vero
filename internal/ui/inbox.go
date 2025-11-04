@@ -148,19 +148,19 @@ func NewInboxModel(cfg *config.VeroConfig, account *config.Account) InboxModel {
 	delegate.Styles.SelectedDesc = delegate.Styles.SelectedDesc.
 		Foreground(lipgloss.Color("8"))
 
-	l := list.New([]list.Item{}, delegate, 80, 20)
+	l := list.New([]list.Item{}, delegate, 0, 0)
 	l.Title = "Inbox"
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
 	l.SetShowHelp(false)
 
-	vp := viewport.New(80, 20)
+	vp := viewport.New(0, 0)
 	vp.HighPerformanceRendering = false
 
 	ti := textinput.New()
 	ti.Placeholder = "Search by sender or subject..."
 	ti.CharLimit = 100
-	ti.Width = 50
+	ti.Width = 0
 
 	defaultFilter := models.FilterAll
 	switch cfg.InboxView {
@@ -329,6 +329,8 @@ func (m InboxModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.windowHeight = msg.Height
 		m.viewport.Width = msg.Width - 4
 		m.viewport.Height = msg.Height - 10
+		m.list.SetSize(msg.Width, msg.Height-8)
+		m.searchInput.Width = msg.Width - 10
 		if m.viewMode == models.ViewDetail && m.selectedIdx >= 0 && m.selectedIdx < len(m.emails) {
 			m.updateViewportContent()
 		}

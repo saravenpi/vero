@@ -67,27 +67,27 @@ func NewComposeModel(cfg *config.VeroConfig, account *config.Account) ComposeMod
 	ti.Placeholder = "recipient@example.com"
 	ti.Focus()
 	ti.CharLimit = 256
-	ti.Width = 50
+	ti.Width = 0
 
 	cc := textinput.New()
 	cc.Placeholder = "cc@example.com (optional)"
 	cc.CharLimit = 256
-	cc.Width = 50
+	cc.Width = 0
 
 	subj := textinput.New()
 	subj.Placeholder = "Email subject"
 	subj.CharLimit = 256
-	subj.Width = 50
+	subj.Width = 0
 
 	ta := textarea.New()
 	ta.Placeholder = "Type your message here..."
-	ta.SetWidth(80)
-	ta.SetHeight(10)
+	ta.SetWidth(0)
+	ta.SetHeight(0)
 
 	attach := textinput.New()
 	attach.Placeholder = "/path/to/file.pdf"
 	attach.CharLimit = 512
-	attach.Width = 60
+	attach.Width = 0
 
 	s := spinner.New()
 	s.Spinner = spinner.Dot
@@ -118,6 +118,15 @@ func (m ComposeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.toInput.Width = msg.Width - 10
+		m.ccInput.Width = msg.Width - 10
+		m.subjInput.Width = msg.Width - 10
+		m.bodyInput.SetWidth(msg.Width - 4)
+		m.bodyInput.SetHeight(msg.Height - 12)
+		m.attachInput.Width = msg.Width - 15
+		return m, nil
+
 	case emailSentMsg:
 		m.step = stepDone
 		if msg.err != nil {
