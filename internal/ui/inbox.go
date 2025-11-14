@@ -39,6 +39,10 @@ type emailDeletedMsg struct {
 
 type refreshTickMsg struct{}
 
+type editorViewFinishedMsg struct {
+	err error
+}
+
 type emailItem struct {
 	email models.Email
 	index int
@@ -133,6 +137,7 @@ type InboxModel struct {
 	deleting             bool
 	searchMode           bool
 	searchInput          textinput.Model
+	openingEditor        bool
 }
 
 // NewInboxModel creates a new inbox model for the specified account.
@@ -322,6 +327,36 @@ func (m InboxModel) deleteEmailCmd(uid uint32) tea.Cmd {
 	}
 }
 
+func (m InboxModel) openBodyInEditorCmd(body string) tea.Cmd {
+	tmpfile, err := os.CreateTemp("", "vero-email-body-*.txt")
+	if err != nil {
+		return func() tea.Msg {
+			return editorViewFinishedMsg{err: fmt.Errorf("failed to create temp file: %w", err)}
+		}
+	}
+	tmpPath := tmpfile.Name()
+
+	if _, err := tmpfile.WriteString(body); err != nil {
+		tmpfile.Close()
+		os.Remove(tmpPath)
+		return func() tea.Msg {
+			return editorViewFinishedMsg{err: fmt.Errorf("failed to write to temp file: %w", err)}
+		}
+	}
+	tmpfile.Close()
+
+	c := exec.Command(m.cfg.Editor, tmpPath)
+	return tea.ExecProcess(c, func(err error) tea.Msg {
+		defer os.Remove(tmpPath)
+
+		if err != nil {
+			return editorViewFinishedMsg{err: fmt.Errorf("editor exited with error: %w", err)}
+		}
+
+		return editorViewFinishedMsg{err: nil}
+	})
+}
+
 func (m InboxModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -414,6 +449,13 @@ func (m InboxModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case editorViewFinishedMsg:
+		m.openingEditor = false
+		if msg.err != nil {
+			m.err = msg.err
+		}
+		return m, nil
+
 	case spinner.TickMsg:
 		if m.loading || m.loadingBody || (m.viewMode == models.ViewDetail && !m.viewportReady) {
 			var cmd tea.Cmd
@@ -442,6 +484,10 @@ func (m InboxModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.viewMode == models.ViewDetail {
 				m.viewMode = models.ViewList
 				m.err = nil
+				if m.filter == models.FilterUnseen {
+					m.loading = true
+					return m, tea.Batch(m.spinner.Tick, m.fetchEmailsCmd(false))
+				}
 				return m, nil
 			}
 			menu := NewMenuModel(m.cfg, m.account)
@@ -565,6 +611,15 @@ func (m InboxModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
+		case "e":
+			if m.viewMode == models.ViewDetail && m.selectedIdx >= 0 && m.selectedIdx < len(m.filteredEmails) && m.cfg.Editor != "" {
+				email := m.filteredEmails[m.selectedIdx]
+				if email.Body != "" {
+					m.openingEditor = true
+					return m, m.openBodyInEditorCmd(email.Body)
+				}
+			}
+
 		case "left", "h":
 			if m.viewMode == models.ViewDetail && m.selectedIdx >= 0 && m.selectedIdx < len(m.filteredEmails) {
 				email := m.filteredEmails[m.selectedIdx]
@@ -654,6 +709,66 @@ func (m InboxModel) renderList() string {
 	return s
 }
 
+func containsURL(s string) bool {
+	return strings.Contains(s, "http://") || strings.Contains(s, "https://") || strings.Contains(s, "www.")
+}
+
+func smartWrap(line string, width int) []string {
+	if width <= 0 {
+		width = 80
+	}
+
+	if !containsURL(line) {
+		wrapped := wordwrap.String(line, width)
+		return strings.Split(wrapped, "\n")
+	}
+
+	if len(line) <= width {
+		return []string{line}
+	}
+
+	var result []string
+	words := strings.Fields(line)
+	currentLine := ""
+
+	for _, word := range words {
+		isURL := strings.HasPrefix(word, "http://") || strings.HasPrefix(word, "https://") || strings.HasPrefix(word, "www.")
+
+		if isURL {
+			if currentLine != "" {
+				result = append(result, currentLine)
+				currentLine = ""
+			}
+			result = append(result, word)
+		} else {
+			testLine := currentLine
+			if testLine != "" {
+				testLine += " "
+			}
+			testLine += word
+
+			if len(testLine) <= width {
+				currentLine = testLine
+			} else {
+				if currentLine != "" {
+					result = append(result, currentLine)
+				}
+				currentLine = word
+			}
+		}
+	}
+
+	if currentLine != "" {
+		result = append(result, currentLine)
+	}
+
+	if len(result) == 0 {
+		return []string{line}
+	}
+
+	return result
+}
+
 func (m *InboxModel) updateViewportContent() {
 	if !m.viewportReady || m.selectedIdx < 0 || m.selectedIdx >= len(m.filteredEmails) {
 		return
@@ -662,7 +777,7 @@ func (m *InboxModel) updateViewportContent() {
 	email := m.filteredEmails[m.selectedIdx]
 	var content strings.Builder
 
-	wrapWidth := m.viewport.Width
+	wrapWidth := m.viewport.Width - 2
 	if wrapWidth <= 0 {
 		wrapWidth = 80
 	}
@@ -680,8 +795,7 @@ func (m *InboxModel) updateViewportContent() {
 				continue
 			}
 
-			wrappedLine := wordwrap.String(line, wrapWidth)
-			wrappedLines := strings.Split(wrappedLine, "\n")
+			wrappedLines := smartWrap(line, wrapWidth)
 			for _, wl := range wrappedLines {
 				if strings.HasPrefix(strings.TrimSpace(line), ">") {
 					content.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render("  "+wl) + "\n")
@@ -752,6 +866,9 @@ func (m InboxModel) renderDetail() string {
 		helpText := "↑↓/j/k: scroll"
 		if len(email.Attachments) > 0 {
 			helpText += " • ←→/h/l: select • o: open • d: download"
+		}
+		if m.cfg.Editor != "" && email.Body != "" {
+			helpText += " • e: view in editor"
 		}
 		helpText += " • D: delete • esc: back • q: quit" + scrollInfo
 
