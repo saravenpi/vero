@@ -153,19 +153,19 @@ func NewInboxModel(cfg *config.VeroConfig, account *config.Account) InboxModel {
 	delegate.Styles.SelectedDesc = delegate.Styles.SelectedDesc.
 		Foreground(lipgloss.Color("8"))
 
-	l := list.New([]list.Item{}, delegate, 0, 0)
+	l := list.New([]list.Item{}, delegate, 80, 24)
 	l.Title = "Inbox"
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
 	l.SetShowHelp(false)
 
-	vp := viewport.New(0, 0)
+	vp := viewport.New(80, 20)
 	vp.HighPerformanceRendering = false
 
 	ti := textinput.New()
 	ti.Placeholder = "Search by sender or subject..."
 	ti.CharLimit = 100
-	ti.Width = 0
+	ti.Width = 70
 
 	defaultFilter := models.FilterAll
 	switch cfg.InboxView {
