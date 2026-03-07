@@ -7,12 +7,12 @@ BINARY_NAME="vero"
 
 echo "🚀 Installing Vero email client..."
 
-if ! command -v go &> /dev/null; then
-    echo "❌ Error: Go is not installed. Please install Go first: https://golang.org/dl/"
+if ! command -v cargo &> /dev/null; then
+    echo "❌ Error: Rust/Cargo is not installed. Please install Rust first: https://rustup.rs/"
     exit 1
 fi
 
-echo "✓ Go found: $(go version)"
+echo "✓ Cargo found: $(cargo --version)"
 
 if [ ! -d "$INSTALL_DIR" ]; then
     echo "📁 Creating $INSTALL_DIR..."
@@ -40,10 +40,10 @@ else
 fi
 
 echo "🔨 Building Vero..."
-go build -o "$BINARY_NAME" .
+cargo build --release
 
 echo "📥 Installing to $INSTALL_DIR/$BINARY_NAME..."
-mv "$BINARY_NAME" "$INSTALL_DIR/$BINARY_NAME"
+mv "target/release/$BINARY_NAME" "$INSTALL_DIR/$BINARY_NAME"
 chmod +x "$INSTALL_DIR/$BINARY_NAME"
 
 echo ""

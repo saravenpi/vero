@@ -1,80 +1,72 @@
 # 📬 Vero
 
-A fast, glamorous terminal-based email client built with Go and [Charmbracelet](https://github.com/charmbracelet) TUI libraries. Read your emails and compose new ones directly from your terminal with an intuitive interface.
+A terminal-based email client built in Rust that embraces the Unix philosophy. **Everything is a file.** Compose emails in your favorite editor, store them as plain text, and maintain full control over your email workflow.
+
+## Philosophy
+
+Vero follows the Unix philosophy:
+
+- **Do one thing well**: Email client for power users
+- **Everything is a file**: Emails, drafts, and sent messages are all human-readable text files
+- **Composability**: Works with your favorite editor, not against it
+- **Transparency**: No hidden formats - you see exactly what you're sending
+- **Scriptability**: Draft files can be generated, templated, or version controlled
 
 ## Features
 
-- **Multiple Accounts**: Manage multiple email accounts from a single interface
-- **Inbox Management**: View and read emails from any IMAP-compatible server with filtering (unseen/seen/all)
-- **Email Composition**: Write and send emails with an intuitive TUI
-- **External Editor Support**: Use your favorite editor (nvim, vim, nano) to compose email bodies
-- **Attachment Support**: Add files to your emails with path autocompletion
-- **Sent Folder**: Browse your locally stored sent emails
-- **YAML Database**: Emails are stored locally as YAML files for easy access
-- **Beautiful TUI**: Built with Bubble Tea, Bubbles, and Lip Gloss
-- **Keyboard Navigation**: Full keyboard control with vim-style bindings
-- **IMAP/SMTP Support**: Works with any email provider that supports IMAP and SMTP
-- **Configurable**: Customizable download folder, default inbox view, and editor preferences
+- **Editor-First Composition**: Write full emails (to, cc, bcc, subject, body) in your favorite editor
+- **File-Based Storage**: All emails stored as plain text `.eml` files with a simple header-body format
+- **Multiple Accounts**: Manage multiple email accounts with per-account organization
+- **BCC Support**: Full support for blind carbon copy recipients
+- **Attachment Support**: Add files via simple comma-separated paths in the email header
+- **Inbox Management**: View and filter emails (unseen/seen/all) from any IMAP server
+- **Sent Folder**: Browse locally stored sent emails
+- **Auto-Refresh**: Optionally auto-refresh inbox at configurable intervals
+- **Beautiful TUI**: Clean, colorful interface built with Ratatui
+- **Keyboard-Driven**: Vim-style navigation with full keyboard control
 
 ## Prerequisites
 
-- Go 1.23 or higher
-- An IMAP/SMTP email account
+- **Rust** 1.70 or higher
+- **An IMAP/SMTP email account**
+- **A terminal editor** (vim, nvim, nano, emacs, etc.) - **REQUIRED** for composing emails
 
 ## Installation
-
-### Quick Install
-
-Install Vero with a single command:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/saravenpi/vero/master/install.sh | bash
-```
-
-This will install the binary to `~/.local/bin/vero`. Make sure `~/.local/bin` is in your PATH.
 
 ### Build from Source
 
 ```bash
 git clone https://github.com/saravenpi/vero.git
 cd vero
-go build -o vero .
+cargo build --release
+sudo mv target/release/vero /usr/local/bin/
 ```
 
-### Manual Install
-
-Move the binary to your PATH:
+### Install with Cargo
 
 ```bash
-sudo mv vero /usr/local/bin/
+cargo install --path .
 ```
 
-Or use `go install`:
+## Configuration
 
-```bash
-go install
-```
-
-### Configuration
-
-Create a `~/.vero.yml` file in your home directory with your email accounts:
+Create a `~/.vero.yml` file:
 
 ```yaml
-# Email accounts configuration
 accounts:
-  - email: your@email.com
+  - email: your@example.com
     imap:
-      user: your@email.com      # Optional, defaults to email
       password: your-password
       host: imap.example.com
-      port: 993                  # Optional, defaults to 993
+      port: 993              # Optional, defaults to 993
+      user: your@example.com # Optional, defaults to email
     smtp:
-      user: your@email.com      # Optional, defaults to email
       password: your-password
       host: smtp.example.com
-      port: 465                  # Optional, defaults to 465
+      port: 465              # Optional, defaults to 465
+      user: your@example.com # Optional, defaults to email
 
-  # Add more accounts as needed
+  # Additional accounts
   - email: work@company.com
     imap:
       password: work-password
@@ -83,194 +75,288 @@ accounts:
       password: work-password
       host: smtp.gmail.com
 
-# Optional global settings
-editor: nvim                   # Optional: External editor for composing emails (nvim, vim, nano, etc.)
-download_folder: ~/Downloads     # Optional: Folder for downloading attachments (defaults to ~/Downloads)
-inbox_view: all                  # Optional: Default inbox filter (unseen, seen, or all)
+# REQUIRED: Editor for composing emails
+editor: vim
+
+# Optional settings
+auto_refresh: 30          # Auto-refresh inbox every 30 seconds (or false/0 to disable)
+inbox_view: all           # Default filter: unseen, seen, or all
+viewer: bat               # External viewer for reading emails (optional)
 ```
 
-#### Configuration Options
+### Editor Configuration (REQUIRED)
 
-**Account Settings** (required):
-- `email`: Your email address
-- `imap.password`: IMAP password
-- `imap.host`: IMAP server hostname
-- `imap.user`: IMAP username (optional, defaults to email)
-- `imap.port`: IMAP port (optional, defaults to 993)
-- `smtp.password`: SMTP password
-- `smtp.host`: SMTP server hostname
-- `smtp.user`: SMTP username (optional, defaults to email)
-- `smtp.port`: SMTP port (optional, defaults to 465)
+Vero **requires** an external editor - there is no fallback TUI editor. The `editor` field is **mandatory** in your configuration.
 
-**Global Settings** (optional):
-- `editor`: External editor to use for composing email bodies (e.g., `nvim`, `vim`, `nano`, `emacs`)
-  - When set, the specified editor opens in a temporary file (like git commit messages)
-  - When not set, uses the built-in textarea editor
-- `download_folder`: Directory for saving email attachments (defaults to `~/Downloads`)
-- `inbox_view`: Initial inbox filter (`unseen`, `seen`, or `all`; defaults to `all`)
+**Supported editors:**
+- `vim`, `nvim`, `nano`, `emacs`, etc.
+- Can include arguments: `editor: "nvim -c 'startinsert'"`
+
+If you try to compose without an editor configured, Vero will show a helpful error message.
 
 ## Usage
 
-### Commands
+### Starting Vero
 
 ```bash
 vero              # Start the email client
-vero version      # Show version information
-vero help         # Show help message
+vero version      # Show version
+vero help         # Show help
 ```
 
-### Account Selection
+### Navigation
 
-If you have multiple accounts configured, Vero will first show an account selection screen. Choose which account to use, then access its sections.
+**Account Selection** (if multiple accounts):
+- `↑`/`↓` or `j`/`k` - Navigate accounts
+- `Enter` - Select account
 
-### Main Menu
+**Main Menu**:
+- `↑`/`↓` or `j`/`k` - Navigate sections (Inbox, Sent, Compose)
+- `Enter` - Enter section
+- `Tab` - Switch focus to menu
+- `q` - Quit
 
-After selecting an account (or if you only have one account), the main menu shows three sections:
-- **Inbox**: View your emails
-- **Sent**: Browse sent emails stored locally
-- **Write**: Compose and send a new email
+**Inbox**:
+- `↑`/`↓` or `j`/`k` - Navigate emails
+- `Enter` - View email
+- `d` - Delete email (removes from local storage)
+- `r` - Refresh inbox
+- `u` - Filter: Unseen emails only
+- `s` - Filter: Seen emails only
+- `a` - Filter: All emails
+- `e` - Open email in external viewer (if configured)
+- `ESC` - Back to menu
+- `q` - Quit
 
-Use arrow keys (↑/↓) or vim keys (j/k) to navigate, Enter to select.
+**Sent Folder**:
+- `↑`/`↓` or `j`/`k` - Navigate sent emails
+- `Enter` - View email
+- `r` - Refresh
+- `e` - Open in external viewer
+- `ESC` - Back to menu
 
-### Inbox
+### Composing Emails
 
-- **Navigate**: Use ↑/↓ or j/k to move through the email list
-- **View Email**: Press Enter to read the selected email
-- **Filter Emails**:
-  - `u` - Show unseen emails only
-  - `s` - Show seen emails only
-  - `a` - Show all emails
-- **Back to List**: Press ESC to return from email details
-- **Back to Menu**: Press ESC from the list
-- **Quit**: Press q or Ctrl+C
+When you select "Compose", Vero creates a draft file and opens your editor:
 
-### Write Email
+**1. Draft File Creation**
+A file is created at `~/.vero/<account>/drafts/<timestamp>.eml`:
 
-Follow the interactive prompts:
-1. **To**: Enter recipient email address (required)
-2. **CC**: Enter CC recipients (optional)
-3. **Subject**: Enter email subject (required)
-4. **Body**: Write your message
-   - If `editor` is configured: Your external editor will open automatically
-   - If not configured: Use the built-in text area (press Ctrl+D to finish)
-5. **Attachments**: Add files to attach (optional, press Enter without input to skip)
-6. **Preview**: Review your email
-7. **Send**: Press Enter to send or ESC to edit
+```
+to:
+cc:
+bcc:
+subject:
+attachments:
+body:
+```
 
-### Sent Folder
+**2. Edit in Your Editor**
+Fill in the fields:
 
-View all emails you've sent, stored locally as YAML files in `~/.vero/sent/`.
+```
+to: recipient@example.com
+cc: colleague@example.com
+bcc: boss@example.com
+subject: Q4 Report
+attachments: ~/Documents/report.pdf, ~/screenshot.png
+body: Hi team,
+
+Please find the Q4 report attached.
+
+Best regards
+```
+
+**Key points:**
+- `to` and `subject` are **required**
+- `cc`, `bcc`, and `attachments` are **optional** (can be left empty or omitted)
+- `from` is **not included** - automatically set from your account
+- `body:` must be the **last field**
+- Everything after `body:` is the email body
+- Attachments: comma-separated file paths (supports `~` expansion)
+
+**3. Save and Quit Editor**
+Vero parses the draft and shows a preview.
+
+**4. Preview Screen**
+- `Enter` - Send email
+- `e` - Edit again (reopens editor)
+- `ESC` - Cancel (deletes draft)
+
+### File Format Details
+
+**Email headers** (order doesn't matter except `body:` must be last):
+```
+to: required@example.com
+cc: optional@example.com, another@example.com
+bcc: secret@example.com
+subject: Required Subject
+attachments: ~/file.pdf, /absolute/path/image.png
+body: Everything after this line is the email body
+It can span multiple lines
+And preserve formatting
+```
+
+**Parsing rules:**
+- Empty lines between headers are ignored
+- Field names are case-insensitive
+- Leading/trailing whitespace is trimmed
+- `from:` field should NOT be in draft (it's auto-set)
+- Unknown fields are ignored (forward compatibility)
 
 ## Data Storage
 
-Vero stores emails locally in `~/.vero/`, organized by account:
+Vero organizes emails by account:
 
 ```
 ~/.vero/
-├── your@email.com/
-│   ├── seen/         # Emails you've viewed
-│   │   └── YYYY-MM-DD-HHMMSS-sender@email.yml
-│   └── sent/         # Emails you've sent
-│       └── YYYY-MM-DD-HHMMSS-recipient@email.yml
+├── your@example.com/
+│   ├── drafts/
+│   │   └── 2025-01-15-143022.eml      # Draft emails (temp)
+│   ├── seen/
+│   │   └── 2025-01-15-100000-sender_example_com.eml
+│   └── sent/
+│       └── 2025-01-15-120000-recipient_example_com.eml
 └── work@company.com/
+    ├── drafts/
     ├── seen/
     └── sent/
 ```
 
-Each email is stored as a YAML file with the following structure:
-
-```yaml
-from: sender@example.com
-subject: Email Subject
-date: Mon, 01 Nov 2025 12:34:56 +0000
-body: Email content...
-timestamp: '2025-11-01T12:34:56.000Z'
-```
+**File format:**
+- **Extension**: `.eml` (not YAML anymore!)
+- **Format**: Simple header-body text format
+- **Human-readable**: Open any email file in your editor
+- **Version control friendly**: Plain text, easy to diff
 
 ## Architecture
 
-Vero is built with:
+Built with Rust and modern async libraries:
 
-- [Bubble Tea](https://github.com/charmbracelet/bubbletea) - TUI framework based on The Elm Architecture
-- [Bubbles](https://github.com/charmbracelet/bubbles) - TUI components (text inputs, text areas)
-- [Lip Gloss](https://github.com/charmbracelet/lipgloss) - Terminal styling and layouts
-- [go-imap](https://github.com/emersion/go-imap) - IMAP client library
-- [go-smtp](https://github.com/emersion/go-smtp) - SMTP client library
-- [go-yaml](https://gopkg.in/yaml.v3) - YAML parser for local storage
+- **[Ratatui](https://ratatui.rs)** - Terminal UI framework
+- **[Tokio](https://tokio.rs)** - Async runtime
+- **[async-imap](https://docs.rs/async-imap)** - IMAP client
+- **[Lettre](https://lettre.rs)** - SMTP client
+- **[mailparse](https://docs.rs/mailparse)** - Email parsing
+- **[Crossterm](https://docs.rs/crossterm)** - Terminal manipulation
 
-**Note**: For Gmail, you'll need to use an [App Password](https://support.google.com/accounts/answer/185833).
+## Examples
 
-## Development
-
-Clone the repository:
+### Quick Email
 
 ```bash
-git clone https://github.com/saravenpi/vero.git
-cd vero
+# Create a quick email (if you have templates set up)
+cat > ~/.vero/user@example.com/drafts/quick.eml <<EOF
+to: friend@example.com
+subject: Quick question
+body: Hey, just checking in!
+EOF
+
+# Then open Vero, go to Compose, and it'll parse your draft
 ```
 
-Create a `~/.vero.yml` file with your accounts (see Configuration section).
+### Email Templates
 
-Run in development:
+Since emails are just text files, you can create templates:
 
 ```bash
-go run .
+# Save template
+cat > ~/email-template.eml <<EOF
+to:
+cc:
+subject: Weekly Update
+body: Hi team,
+
+This week's update:
+
+-
+-
+-
+
+Best regards
+EOF
+
+# Use template
+cp ~/email-template.eml ~/.vero/user@example.com/drafts/$(date +%Y-%m-%d-%H%M%S).eml
 ```
 
-Build:
+### Scripted Emails
 
 ```bash
-go build -o vero .
-```
+# Generate email from script
+cat > ~/.vero/user@example.com/drafts/$(date +%Y-%m-%d-%H%M%S).eml <<EOF
+to: team@example.com
+subject: Server Status Report $(date +%Y-%m-%d)
+body: Daily server status:
 
-Test:
+$(uptime)
 
-```bash
-go test ./...
+Disk usage:
+$(df -h)
+EOF
 ```
 
 ## Troubleshooting
 
-### "Command not found: vero"
+### "No editor configured!"
 
-Make sure the binary is in your PATH. You can either:
-- Move it to `/usr/local/bin/`: `sudo mv vero /usr/local/bin/`
-- Or add the current directory to PATH
+Add `editor: vim` (or your preferred editor) to `~/.vero.yml`.
+
+### "Draft parsing error"
+
+Check that:
+- `to:` and `subject:` fields are not empty
+- `body:` is the last field
+- All header lines have a colon `:`
+- Attachment files exist and are readable
 
 ### "Connection failed"
 
-- Check your email credentials in `~/.vero.yml`
-- Ensure your email provider allows IMAP/SMTP access
-- For Gmail, use an App Password instead of your regular password
-- Verify the IMAP/SMTP host and port are correct
+- Verify IMAP/SMTP credentials in `~/.vero.yml`
+- For Gmail: Use an [App Password](https://support.google.com/accounts/answer/185833)
+- Check firewall/network settings
 
-### "No emails found"
+### "Attachment file not found"
 
-By default, Vero shows unseen emails. Press:
-- `u` for unseen emails
-- `s` for seen emails
-- `a` for all emails
+- Use absolute paths or `~` for home directory
+- Verify file exists: `ls ~/path/to/file.pdf`
+- Check file permissions
 
-## Uninstall
+## Migration from v1.x
 
-To completely remove Vero from your system:
+**Breaking changes in v2.0:**
+- **Storage format**: Changed from YAML to `.eml` text format
+- **Directory structure**: Now per-account (`~/.vero/<account>/`)
+- **Editor requirement**: Editor is now required (no TUI fallback)
+- **Old data**: Not auto-migrated - clean break for v2.0
+
+Old emails remain in `~/.vero/seen/` and `~/.vero/sent/` but won't be loaded by v2.0.
+
+## Development
 
 ```bash
-rm -rf ~/.vero
-rm ~/.local/bin/vero  # if installed with install.sh
-# or
-sudo rm /usr/local/bin/vero  # if installed manually
-```
+# Clone and build
+git clone https://github.com/saravenpi/vero.git
+cd vero
+cargo build
 
-This will remove the binary and all stored emails/configuration.
+# Run in development
+cargo run
+
+# Run tests
+cargo test
+
+# Build release
+cargo build --release
+```
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-MIT
+AGPL-3.0
 
 ## Author
 
@@ -278,6 +364,7 @@ MIT
 
 ---
 
-Built with [Go](https://go.dev) and [Charmbracelet](https://github.com/charmbracelet)
-
+**Built with Rust 🦀**
 **Version**: 2.0.0
+
+*"Everything is a file, everything is composable."*
