@@ -39,24 +39,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\n--- Testing SEARCH ALL ---");
     let all_uids = session.uid_search("ALL").await?;
-    println!("SEARCH ALL returned {} UIDs: {:?}", all_uids.len(), all_uids);
+    println!(
+        "SEARCH ALL returned {} UIDs: {:?}",
+        all_uids.len(),
+        all_uids
+    );
 
     println!("\n--- Testing SEARCH UNSEEN ---");
     let unseen_uids = session.uid_search("UNSEEN").await?;
-    println!("SEARCH UNSEEN returned {} UIDs: {:?}", unseen_uids.len(), unseen_uids);
+    println!(
+        "SEARCH UNSEEN returned {} UIDs: {:?}",
+        unseen_uids.len(),
+        unseen_uids
+    );
 
     println!("\n--- Testing SEARCH SEEN ---");
     let seen_uids = session.uid_search("SEEN").await?;
-    println!("SEARCH SEEN returned {} UIDs: {:?}", seen_uids.len(), seen_uids);
+    println!(
+        "SEARCH SEEN returned {} UIDs: {:?}",
+        seen_uids.len(),
+        seen_uids
+    );
 
     if !all_uids.is_empty() {
         println!("\n--- Fetching first email details ---");
         let first_uid = *all_uids.iter().next().unwrap();
-        let mut messages = session.uid_fetch(first_uid.to_string(), "ENVELOPE FLAGS").await?;
+        let mut messages = session
+            .uid_fetch(first_uid.to_string(), "ENVELOPE FLAGS")
+            .await?;
 
         if let Some(Ok(fetch)) = messages.next().await {
             if let Some(envelope) = fetch.envelope() {
-                let subject = envelope.subject
+                let subject = envelope
+                    .subject
                     .as_ref()
                     .and_then(|s| String::from_utf8(s.to_vec()).ok())
                     .unwrap_or_default();

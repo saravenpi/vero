@@ -25,7 +25,7 @@ pub struct Email {
     pub timestamp: DateTime<Utc>,
     #[serde(default)]
     pub attachments: Vec<Attachment>,
-    #[serde(skip)]
+    #[serde(default, skip_serializing_if = "is_zero_uid")]
     pub uid: u32,
 }
 
@@ -43,7 +43,6 @@ pub enum InboxFilter {
 }
 
 impl InboxFilter {
-    #[allow(dead_code)]
     pub fn as_str(&self) -> &'static str {
         match self {
             InboxFilter::Unseen => "unseen",
@@ -69,4 +68,8 @@ pub struct EmailDraft {
     pub subject: String,
     pub body: String,
     pub attachments: Vec<Attachment>,
+}
+
+fn is_zero_uid(uid: &u32) -> bool {
+    *uid == 0
 }

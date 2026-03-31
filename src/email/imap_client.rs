@@ -3,7 +3,7 @@ use async_imap::types::Fetch;
 use async_native_tls::TlsConnector;
 use async_std::net::TcpStream;
 use chrono::{DateTime, Utc};
-use futures::StreamExt;
+use futures::{pin_mut, StreamExt};
 use mailparse::{parse_mail, MailHeaderMap};
 
 use crate::config::ImapConfig;
@@ -28,33 +28,30 @@ pub async fn fetch_emails(cfg: &ImapConfig, filter: InboxFilter) -> Result<Vec<E
 
     let tcp_stream = async_std::future::timeout(
         std::time::Duration::from_secs(10),
-        TcpStream::connect(&addr)
-    ).await
+        TcpStream::connect(&addr),
+    )
+    .await
     .context("Connection timeout")?
     .context("Failed to connect to IMAP server")?;
 
     let tls = TlsConnector::new();
     let tls_stream = async_std::future::timeout(
         std::time::Duration::from_secs(10),
-        tls.connect(&cfg.host, tcp_stream)
-    ).await
+        tls.connect(&cfg.host, tcp_stream),
+    )
+    .await
     .context("TLS handshake timeout")?
     .context("TLS connection failed")?;
 
     let client = async_imap::Client::new(tls_stream);
     let mut session = client
-        .login(
-            cfg.user.as_ref().unwrap(),
-            &cfg.password,
-        )
+        .login(cfg.user.as_ref().unwrap(), &cfg.password)
         .await
         .map_err(|e| anyhow::anyhow!("Failed to login: {}", e.0))?;
 
-    async_std::future::timeout(
-        std::time::Duration::from_secs(10),
-        session.select("INBOX")
-    ).await
-    .context("INBOX select timeout")??;
+    async_std::future::timeout(std::time::Duration::from_secs(10), session.select("INBOX"))
+        .await
+        .context("INBOX select timeout")??;
 
     let query = match filter {
         InboxFilter::Unseen => "UNSEEN",
@@ -64,8 +61,9 @@ pub async fn fetch_emails(cfg: &ImapConfig, filter: InboxFilter) -> Result<Vec<E
 
     let uids = async_std::future::timeout(
         std::time::Duration::from_secs(10),
-        session.uid_search(query)
-    ).await
+        session.uid_search(query),
+    )
+    .await
     .context("Search timeout")??;
 
     if uids.is_empty() {
@@ -83,8 +81,9 @@ pub async fn fetch_emails(cfg: &ImapConfig, filter: InboxFilter) -> Result<Vec<E
 
     let messages_vec: Vec<_> = async_std::future::timeout(
         std::time::Duration::from_secs(20),
-        messages_stream.collect::<Vec<_>>()
-    ).await
+        messages_stream.collect::<Vec<_>>(),
+    )
+    .await
     .context("Failed to collect messages")?;
 
     let mut emails = Vec::new();
@@ -103,33 +102,37 @@ pub async fn fetch_emails(cfg: &ImapConfig, filter: InboxFilter) -> Result<Vec<E
 fn parse_envelope(fetch: &Fetch) -> Option<Email> {
     let envelope = fetch.envelope()?;
 
-    let from = envelope.from.as_ref()
+    let from = envelope
+        .from
+        .as_ref()
         .and_then(|addrs| addrs.first())
         .map(format_address)
         .unwrap_or_default();
 
-    let to = envelope.to.as_ref()
-        .map(|addrs| {
-            addrs.iter()
-                .map(format_address)
-                .collect::<Vec<_>>()
-                .join(", ")
-        });
+    let to = envelope.to.as_ref().map(|addrs| {
+        addrs
+            .iter()
+            .map(format_address)
+            .collect::<Vec<_>>()
+            .join(", ")
+    });
 
-    let cc = envelope.cc.as_ref()
-        .map(|addrs| {
-            addrs.iter()
-                .map(format_address)
-                .collect::<Vec<_>>()
-                .join(", ")
-        });
+    let cc = envelope.cc.as_ref().map(|addrs| {
+        addrs
+            .iter()
+            .map(format_address)
+            .collect::<Vec<_>>()
+            .join(", ")
+    });
 
-    let subject = envelope.subject
+    let subject = envelope
+        .subject
         .as_ref()
         .map(|s| decode_mime_header(s))
         .unwrap_or_default();
 
-    let date = envelope.date
+    let date = envelope
+        .date
         .as_ref()
         .and_then(|d| String::from_utf8(d.to_vec()).ok())
         .unwrap_or_default();
@@ -151,17 +154,20 @@ fn parse_envelope(fetch: &Fetch) -> Option<Email> {
 }
 
 fn format_address(addr: &async_imap::imap_proto::Address) -> String {
-    let name = addr.name
+    let name = addr
+        .name
         .as_ref()
         .map(|n| decode_mime_header(n))
         .filter(|n| !n.is_empty());
 
-    let mailbox = addr.mailbox
+    let mailbox = addr
+        .mailbox
         .as_ref()
         .and_then(|m| String::from_utf8(m.to_vec()).ok())
         .unwrap_or_default();
 
-    let host = addr.host
+    let host = addr
+        .host
         .as_ref()
         .and_then(|h| String::from_utf8(h.to_vec()).ok())
         .unwrap_or_default();
@@ -189,38 +195,41 @@ fn parse_date(date_str: &str) -> Option<DateTime<Utc>> {
         })
 }
 
-pub async fn fetch_email_body(
-    cfg: &ImapConfig,
-    uid: u32,
-) -> Result<(String, Vec<Attachment>)> {
+pub async fn fetch_email_body(cfg: &ImapConfig, uid: u32) -> Result<(String, Vec<Attachment>)> {
     let addr = format!("{}:{}", cfg.host, cfg.port);
-    let tcp_stream = TcpStream::connect(&addr).await?;
+
+    let tcp_stream = async_std::future::timeout(
+        std::time::Duration::from_secs(10),
+        TcpStream::connect(&addr),
+    )
+    .await
+    .context("Connection timeout")?
+    .context("Failed to connect to IMAP server")?;
+
     let tls = TlsConnector::new();
-    let tls_stream = tls.connect(&cfg.host, tcp_stream).await?;
+    let tls_stream = async_std::future::timeout(
+        std::time::Duration::from_secs(10),
+        tls.connect(&cfg.host, tcp_stream),
+    )
+    .await
+    .context("TLS handshake timeout")?
+    .context("TLS connection failed")?;
 
     let client = async_imap::Client::new(tls_stream);
     let mut session = client
-        .login(
-            cfg.user.as_ref().unwrap(),
-            &cfg.password,
-        )
+        .login(cfg.user.as_ref().unwrap(), &cfg.password)
         .await
         .map_err(|e| anyhow::anyhow!("Failed to login: {}", e.0))?;
 
     session.select("INBOX").await?;
 
-    let mut messages = session
-        .uid_fetch(format!("{}", uid), "BODY.PEEK[]")
-        .await?;
+    let mut messages = session.uid_fetch(format!("{}", uid), "BODY.PEEK[]").await?;
 
-    let fetch = messages.next().await
-        .context("No message found")??;
+    let fetch = messages.next().await.context("No message found")??;
 
-    let body_data = fetch.body()
-        .context("No body found")?;
+    let body_data = fetch.body().context("No body found")?;
 
-    let parsed = parse_mail(body_data)
-        .context("Failed to parse email")?;
+    let parsed = parse_mail(body_data).context("Failed to parse email")?;
 
     let (body, attachments) = extract_body_and_attachments(&parsed)?;
 
@@ -269,8 +278,8 @@ fn extract_parts(
         }
     } else if let Some(content_disposition) = mail.headers.get_first_value("Content-Disposition") {
         if content_disposition.contains("attachment") {
-            let filename = extract_filename(&content_disposition)
-                .unwrap_or_else(|| "unknown".to_string());
+            let filename =
+                extract_filename(&content_disposition).unwrap_or_else(|| "unknown".to_string());
 
             let size = mail.get_body_raw()?.len() as i64;
 
@@ -290,11 +299,7 @@ fn extract_filename(content_disposition: &str) -> Option<String> {
     for part in content_disposition.split(';') {
         let part = part.trim();
         if let Some(stripped) = part.strip_prefix("filename=") {
-            return Some(
-                stripped
-                    .trim_matches(|c| c == '"' || c == '\'')
-                    .to_string()
-            );
+            return Some(stripped.trim_matches(|c| c == '"' || c == '\'').to_string());
         }
     }
     None
@@ -326,25 +331,24 @@ pub async fn fetch_unseen_count(cfg: &ImapConfig) -> Result<usize> {
 
     let tcp_stream = async_std::future::timeout(
         std::time::Duration::from_secs(10),
-        TcpStream::connect(&addr)
-    ).await
+        TcpStream::connect(&addr),
+    )
+    .await
     .context("Connection timeout")?
     .context("Failed to connect to IMAP server")?;
 
     let tls = TlsConnector::new();
     let tls_stream = async_std::future::timeout(
         std::time::Duration::from_secs(10),
-        tls.connect(&cfg.host, tcp_stream)
-    ).await
+        tls.connect(&cfg.host, tcp_stream),
+    )
+    .await
     .context("TLS handshake timeout")?
     .context("TLS connection failed")?;
 
     let client = async_imap::Client::new(tls_stream);
     let mut session = client
-        .login(
-            cfg.user.as_ref().unwrap(),
-            &cfg.password,
-        )
+        .login(cfg.user.as_ref().unwrap(), &cfg.password)
         .await
         .map_err(|e| anyhow::anyhow!("Failed to login: {}", e.0))?;
 
@@ -366,10 +370,7 @@ pub async fn delete_email(cfg: &ImapConfig, uid: u32) -> Result<()> {
 
     let client = async_imap::Client::new(tls_stream);
     let mut session = client
-        .login(
-            cfg.user.as_ref().unwrap(),
-            &cfg.password,
-        )
+        .login(cfg.user.as_ref().unwrap(), &cfg.password)
         .await
         .map_err(|e| anyhow::anyhow!("Failed to login: {}", e.0))?;
 
@@ -381,6 +382,21 @@ pub async fn delete_email(cfg: &ImapConfig, uid: u32) -> Result<()> {
 
     while store_stream.next().await.is_some() {}
     drop(store_stream);
+
+    let used_uid_expunge = match session.uid_expunge(format!("{}", uid)).await {
+        Ok(expunge_stream) => {
+            pin_mut!(expunge_stream);
+            while expunge_stream.next().await.is_some() {}
+            true
+        }
+        Err(_) => false,
+    };
+
+    if !used_uid_expunge {
+        let expunge_stream = session.expunge().await?;
+        pin_mut!(expunge_stream);
+        while expunge_stream.next().await.is_some() {}
+    }
 
     session.logout().await?;
 

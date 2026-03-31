@@ -51,19 +51,22 @@ fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
 
     let inner = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(4), Constraint::Length(1), Constraint::Min(0)])
+        .constraints([
+            Constraint::Length(4),
+            Constraint::Length(1),
+            Constraint::Min(0),
+        ])
         .margin(1)
         .split(area);
 
     let logo = Paragraph::new(vec![
         Line::from(Span::styled(
             "  ◆ VERO",
-            Style::default().fg(PRIMARY_COLOR).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(PRIMARY_COLOR)
+                .add_modifier(Modifier::BOLD),
         )),
-        Line::from(Span::styled(
-            "  Email Client",
-            Style::default(),
-        )),
+        Line::from(Span::styled("  Email Client", Style::default())),
     ]);
     frame.render_widget(logo, inner[0]);
 
@@ -87,7 +90,9 @@ fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
                     .bg(PRIMARY_COLOR)
                     .add_modifier(Modifier::BOLD | Modifier::REVERSED)
             } else if is_selected {
-                Style::default().fg(PRIMARY_COLOR).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(PRIMARY_COLOR)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default()
             };
@@ -117,7 +122,9 @@ fn render_main_content(frame: &mut Frame, app: &App, area: Rect) {
 fn render_footer(frame: &mut Frame, app: &App, area: Rect) {
     let help_text = match app.screen {
         Screen::AccountSelection => "↑/↓: Navigate  Enter: Select  q: Quit",
-        Screen::Inbox => "Enter: View  d: Delete  r: Refresh  u/s/a: Filter  e: Editor  Tab: Menu  q: Quit",
+        Screen::Inbox => {
+            "Enter: View  d: Delete  r: Refresh  u/s/a: Filter  e: Editor  Tab: Menu  q: Quit"
+        }
         Screen::Sent => "Enter: View  r: Refresh  e: Editor  Tab: Menu  q: Quit",
         Screen::Compose => match app.compose_step {
             ComposeStep::Preview => "Enter: Send  e: Edit  ESC: Cancel  q: Quit",
@@ -139,7 +146,10 @@ fn render_footer(frame: &mut Frame, app: &App, area: Rect) {
         .unwrap_or_default();
 
     let footer_line = Line::from(vec![
-        Span::styled(format!(" {} ", help_text), Style::default().add_modifier(Modifier::DIM)),
+        Span::styled(
+            format!(" {} ", help_text),
+            Style::default().add_modifier(Modifier::DIM),
+        ),
         if !status.is_empty() {
             Span::styled(status, Style::default().fg(SUCCESS_COLOR))
         } else {
@@ -194,19 +204,16 @@ fn render_account_selection(frame: &mut Frame, app: &App, area: Rect) {
             Style::default()
                 .fg(PRIMARY_COLOR)
                 .add_modifier(Modifier::BOLD),
-        ))
-        .alignment(Alignment::Center),
+        )),
         Line::from(Span::styled(
             "Terminal Email Client",
             Style::default().fg(Color::Reset),
-        ))
-        .alignment(Alignment::Center),
+        )),
         Line::from(""),
         Line::from(Span::styled(
             "Select Account",
             Style::default().fg(PRIMARY_COLOR),
-        ))
-        .alignment(Alignment::Center),
+        )),
     ]);
 
     frame.render_widget(title, inner[0]);
@@ -241,7 +248,6 @@ fn render_account_selection(frame: &mut Frame, app: &App, area: Rect) {
     let list = List::new(items);
     frame.render_widget(list, inner[1]);
 }
-
 
 fn render_inbox_screen(frame: &mut Frame, app: &App, area: Rect) {
     if app.inbox_view_mode == ViewMode::Detail {
@@ -303,7 +309,11 @@ fn render_inbox_screen(frame: &mut Frame, app: &App, area: Rect) {
             let is_selected = i == app.inbox_selected;
 
             let (bg_color, fg_color, modifier) = if is_selected {
-                (PRIMARY_COLOR, Color::Reset, Modifier::BOLD | Modifier::REVERSED)
+                (
+                    PRIMARY_COLOR,
+                    Color::Reset,
+                    Modifier::BOLD | Modifier::REVERSED,
+                )
             } else {
                 (Color::Reset, Color::Reset, Modifier::empty())
             };
@@ -312,14 +322,22 @@ fn render_inbox_screen(frame: &mut Frame, app: &App, area: Rect) {
             let from_max = 25;
 
             let subject = if email.subject.len() > subject_max {
-                let truncated: String = email.subject.chars().take(subject_max.saturating_sub(1)).collect();
+                let truncated: String = email
+                    .subject
+                    .chars()
+                    .take(subject_max.saturating_sub(1))
+                    .collect();
                 format!("{}…", truncated)
             } else {
                 email.subject.clone()
             };
 
             let from = if email.from.len() > from_max {
-                let truncated: String = email.from.chars().take(from_max.saturating_sub(1)).collect();
+                let truncated: String = email
+                    .from
+                    .chars()
+                    .take(from_max.saturating_sub(1))
+                    .collect();
                 format!("{}…", truncated)
             } else {
                 email.from.clone()
@@ -330,9 +348,25 @@ fn render_inbox_screen(frame: &mut Frame, app: &App, area: Rect) {
 
             let line = Line::from(vec![
                 Span::styled(" ", Style::default().bg(bg_color).add_modifier(modifier)),
-                Span::styled(subject, Style::default().fg(fg_color).bg(bg_color).add_modifier(modifier)),
+                Span::styled(
+                    subject,
+                    Style::default()
+                        .fg(fg_color)
+                        .bg(bg_color)
+                        .add_modifier(modifier),
+                ),
                 Span::styled(spaces, Style::default().bg(bg_color).add_modifier(modifier)),
-                Span::styled(from, Style::default().fg(fg_color).bg(bg_color).add_modifier(if is_selected { modifier } else { modifier | Modifier::DIM })),
+                Span::styled(
+                    from,
+                    Style::default()
+                        .fg(fg_color)
+                        .bg(bg_color)
+                        .add_modifier(if is_selected {
+                            modifier
+                        } else {
+                            modifier | Modifier::DIM
+                        }),
+                ),
                 Span::styled(" ", Style::default().bg(bg_color).add_modifier(modifier)),
             ]);
 
@@ -398,7 +432,11 @@ fn render_sent_screen(frame: &mut Frame, app: &App, area: Rect) {
             let is_selected = i == app.sent_selected;
 
             let (bg_color, fg_color, modifier) = if is_selected {
-                (PRIMARY_COLOR, Color::Reset, Modifier::BOLD | Modifier::REVERSED)
+                (
+                    PRIMARY_COLOR,
+                    Color::Reset,
+                    Modifier::BOLD | Modifier::REVERSED,
+                )
             } else {
                 (Color::Reset, Color::Reset, Modifier::empty())
             };
@@ -410,7 +448,11 @@ fn render_sent_screen(frame: &mut Frame, app: &App, area: Rect) {
             let to_max = 30;
 
             let subject = if email.subject.len() > subject_max {
-                let truncated: String = email.subject.chars().take(subject_max.saturating_sub(1)).collect();
+                let truncated: String = email
+                    .subject
+                    .chars()
+                    .take(subject_max.saturating_sub(1))
+                    .collect();
                 format!("{}…", truncated)
             } else {
                 email.subject.clone()
@@ -428,9 +470,25 @@ fn render_sent_screen(frame: &mut Frame, app: &App, area: Rect) {
 
             let line = Line::from(vec![
                 Span::styled(" ", Style::default().bg(bg_color).add_modifier(modifier)),
-                Span::styled(subject, Style::default().fg(fg_color).bg(bg_color).add_modifier(modifier)),
+                Span::styled(
+                    subject,
+                    Style::default()
+                        .fg(fg_color)
+                        .bg(bg_color)
+                        .add_modifier(modifier),
+                ),
                 Span::styled(spaces, Style::default().bg(bg_color).add_modifier(modifier)),
-                Span::styled(to_text, Style::default().fg(fg_color).bg(bg_color).add_modifier(if is_selected { modifier } else { modifier | Modifier::DIM })),
+                Span::styled(
+                    to_text,
+                    Style::default()
+                        .fg(fg_color)
+                        .bg(bg_color)
+                        .add_modifier(if is_selected {
+                            modifier
+                        } else {
+                            modifier | Modifier::DIM
+                        }),
+                ),
                 Span::styled(" ", Style::default().bg(bg_color).add_modifier(modifier)),
             ]);
 
@@ -461,12 +519,10 @@ fn render_email_detail(
 
     let email = &emails[selected];
 
-    let header_block = Block::default()
-        .borders(Borders::NONE)
-        .title(Span::styled(
-            format!(" {} ", email.subject),
-            Style::default().fg(PRIMARY_COLOR),
-        ));
+    let header_block = Block::default().borders(Borders::NONE).title(Span::styled(
+        format!(" {} ", email.subject),
+        Style::default().fg(PRIMARY_COLOR),
+    ));
 
     let unknown = String::from("Unknown");
     let to = email.to.as_ref().unwrap_or(&unknown);
@@ -495,12 +551,10 @@ fn render_email_detail(
         app.sent_scroll_offset
     };
 
-    let body_block = Block::default()
-        .borders(Borders::NONE)
-        .title(Span::styled(
-            " Body (j/k to scroll) ".to_string(),
-            Style::default().fg(SECONDARY_COLOR),
-        ));
+    let body_block = Block::default().borders(Borders::NONE).title(Span::styled(
+        " Body (j/k to scroll) ".to_string(),
+        Style::default().fg(SECONDARY_COLOR),
+    ));
 
     let body = Paragraph::new(email.body.as_str())
         .block(body_block)
@@ -583,8 +637,7 @@ fn render_compose_screen(frame: &mut Frame, app: &App, area: Rect) {
                 Line::from(""),
                 Line::from(Span::styled(
                     "Opening editor...",
-                    Style::default()
-                        .add_modifier(Modifier::ITALIC),
+                    Style::default().add_modifier(Modifier::ITALIC),
                 )),
             ];
 
@@ -602,23 +655,19 @@ fn render_compose_screen(frame: &mut Frame, app: &App, area: Rect) {
                     Style::default().fg(PRIMARY_COLOR),
                 ));
 
-            let mut preview_lines = vec![
-                Line::from(vec![
-                    Span::styled(
-                        "To: ",
-                        Style::default()
-                            .add_modifier(Modifier::BOLD | Modifier::DIM),
-                    ),
-                    Span::styled(&app.compose_draft.to, Style::default()),
-                ]),
-            ];
+            let mut preview_lines = vec![Line::from(vec![
+                Span::styled(
+                    "To: ",
+                    Style::default().add_modifier(Modifier::BOLD | Modifier::DIM),
+                ),
+                Span::styled(&app.compose_draft.to, Style::default()),
+            ])];
 
             if !app.compose_draft.cc.is_empty() {
                 preview_lines.push(Line::from(vec![
                     Span::styled(
                         "CC: ",
-                        Style::default()
-                            .add_modifier(Modifier::BOLD | Modifier::DIM),
+                        Style::default().add_modifier(Modifier::BOLD | Modifier::DIM),
                     ),
                     Span::styled(&app.compose_draft.cc, Style::default()),
                 ]));
@@ -628,8 +677,7 @@ fn render_compose_screen(frame: &mut Frame, app: &App, area: Rect) {
                 preview_lines.push(Line::from(vec![
                     Span::styled(
                         "BCC: ",
-                        Style::default()
-                            .add_modifier(Modifier::BOLD | Modifier::DIM),
+                        Style::default().add_modifier(Modifier::BOLD | Modifier::DIM),
                     ),
                     Span::styled(&app.compose_draft.bcc, Style::default()),
                 ]));
@@ -638,8 +686,7 @@ fn render_compose_screen(frame: &mut Frame, app: &App, area: Rect) {
             preview_lines.push(Line::from(vec![
                 Span::styled(
                     "Subject: ",
-                    Style::default()
-                        .add_modifier(Modifier::BOLD | Modifier::DIM),
+                    Style::default().add_modifier(Modifier::BOLD | Modifier::DIM),
                 ),
                 Span::styled(&app.compose_draft.subject, Style::default()),
             ]));
@@ -648,8 +695,7 @@ fn render_compose_screen(frame: &mut Frame, app: &App, area: Rect) {
                 preview_lines.push(Line::from(vec![
                     Span::styled(
                         "Attachments: ",
-                        Style::default()
-                            .add_modifier(Modifier::BOLD | Modifier::DIM),
+                        Style::default().add_modifier(Modifier::BOLD | Modifier::DIM),
                     ),
                     Span::styled(
                         format!("{} file(s)", app.compose_draft.attachments.len()),

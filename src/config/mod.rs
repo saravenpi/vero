@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Deserializer};
-use std::path::PathBuf;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct VeroConfig {
@@ -89,8 +88,8 @@ impl VeroConfig {
         let contents = std::fs::read_to_string(&config_path)
             .with_context(|| format!("Unable to read config file at {:?}", config_path))?;
 
-        let mut config: VeroConfig = serde_yaml::from_str(&contents)
-            .context("Unable to parse config file")?;
+        let mut config: VeroConfig =
+            serde_yaml::from_str(&contents).context("Unable to parse config file")?;
 
         if config.accounts.is_empty() {
             anyhow::bail!("No accounts configured in {:?}", config_path);
@@ -130,18 +129,6 @@ impl VeroConfig {
         }
 
         Ok(config)
-    }
-
-    #[allow(dead_code)]
-    pub fn download_path(&self) -> PathBuf {
-        self.download_folder
-            .as_ref()
-            .map(PathBuf::from)
-            .unwrap_or_else(|| {
-                dirs::home_dir()
-                    .unwrap_or_else(|| PathBuf::from("."))
-                    .join("Downloads")
-            })
     }
 }
 

@@ -138,6 +138,10 @@ pub fn load_sent_emails(account_email: &str) -> Result<Vec<Email>> {
 pub fn delete_seen_email(account_email: &str, email: &Email) -> Result<()> {
     let seen_path = get_seen_dir(account_email)?;
 
+    if !seen_path.exists() {
+        return Ok(());
+    }
+
     let entries = std::fs::read_dir(&seen_path).context("Failed to read seen directory")?;
 
     for entry in entries.flatten() {

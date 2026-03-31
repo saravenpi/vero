@@ -41,22 +41,23 @@ pub async fn send_email(cfg: &SmtpConfig, from: &str, draft: EmailDraft) -> Resu
             .body(draft.body.clone())
             .context("Failed to build email")?
     } else {
-        let mut multipart = MultiPart::mixed()
-            .singlepart(SinglePart::plain(draft.body.clone()));
+        let mut multipart = MultiPart::mixed().singlepart(SinglePart::plain(draft.body.clone()));
 
         for attachment in &draft.attachments {
             if let Some(file_path) = &attachment.file_path {
                 let file_data = std::fs::read(file_path)
                     .with_context(|| format!("Failed to read attachment: {}", file_path))?;
 
-                let content_type: header::ContentType = attachment.content_type.parse()
+                let content_type: header::ContentType = attachment
+                    .content_type
+                    .parse()
                     .unwrap_or_else(|_| "application/octet-stream".parse().unwrap());
 
                 multipart = multipart.singlepart(
                     SinglePart::builder()
                         .header(content_type)
                         .header(header::ContentDisposition::attachment(&attachment.filename))
-                        .body(file_data)
+                        .body(file_data),
                 );
             }
         }
@@ -66,10 +67,7 @@ pub async fn send_email(cfg: &SmtpConfig, from: &str, draft: EmailDraft) -> Resu
             .context("Failed to build email with attachments")?
     };
 
-    let creds = Credentials::new(
-        cfg.user.clone().unwrap_or_default(),
-        cfg.password.clone(),
-    );
+    let creds = Credentials::new(cfg.user.clone().unwrap_or_default(), cfg.password.clone());
 
     let mailer = SmtpTransport::relay(&cfg.host)
         .context("Failed to create SMTP transport")?
@@ -77,11 +75,8 @@ pub async fn send_email(cfg: &SmtpConfig, from: &str, draft: EmailDraft) -> Resu
         .port(cfg.port)
         .build();
 
-    tokio::task::spawn_blocking(move || {
-        mailer.send(&email)
-            .context("Failed to send email")
-    })
-    .await??;
+    tokio::task::spawn_blocking(move || mailer.send(&email).context("Failed to send email"))
+        .await??;
 
     Ok(())
 }

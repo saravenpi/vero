@@ -211,7 +211,9 @@ impl App {
     pub fn select_next(&mut self) {
         match self.screen {
             Screen::Inbox if self.inbox_view_mode == ViewMode::List => {
-                if !self.inbox_emails.is_empty() && self.inbox_selected < self.inbox_emails.len() - 1 {
+                if !self.inbox_emails.is_empty()
+                    && self.inbox_selected < self.inbox_emails.len() - 1
+                {
                     self.inbox_selected += 1;
                 }
             }

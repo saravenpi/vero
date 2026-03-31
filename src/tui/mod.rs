@@ -1,9 +1,13 @@
 pub mod app;
 mod events;
+mod external;
+mod handlers;
+mod runtime;
 mod ui;
 
 pub use app::App;
 pub use events::{AppEvent, EventHandler};
+pub use runtime::run;
 pub use ui::render;
 
 use crossterm::event::KeyEvent;

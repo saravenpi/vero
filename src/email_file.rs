@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context, Result};
+use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -257,6 +258,8 @@ pub fn parse_stored_email_file(content: &str) -> Result<Email> {
         .cloned()
         .unwrap_or_else(|| chrono::Utc::now().to_rfc2822());
 
+    let timestamp = parse_email_timestamp(&date).unwrap_or_else(Utc::now);
+
     let attachments = if let Some(attachments_str) = headers.get("attachments") {
         attachments_str
             .split(',')
@@ -271,8 +274,6 @@ pub fn parse_stored_email_file(content: &str) -> Result<Email> {
         Vec::new()
     };
 
-    let timestamp = chrono::Utc::now();
-
     Ok(Email {
         from,
         to,
@@ -285,4 +286,30 @@ pub fn parse_stored_email_file(content: &str) -> Result<Email> {
         attachments,
         uid: 0,
     })
+}
+
+fn parse_email_timestamp(date: &str) -> Option<DateTime<Utc>> {
+    DateTime::parse_from_rfc2822(date)
+        .ok()
+        .map(|timestamp| timestamp.with_timezone(&Utc))
+        .or_else(|| {
+            DateTime::parse_from_rfc3339(date)
+                .ok()
+                .map(|timestamp| timestamp.with_timezone(&Utc))
+        })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_stored_email_file;
+
+    #[test]
+    fn parses_timestamp_from_date_header() {
+        let email = parse_stored_email_file(
+            "from: Me\nto: test@example.com\nsubject: Test\ndate: Tue, 31 Mar 2026 15:00:33 +0000\nbody: hello",
+        )
+        .unwrap();
+
+        assert_eq!(email.timestamp.to_rfc3339(), "2026-03-31T15:00:33+00:00");
+    }
 }
