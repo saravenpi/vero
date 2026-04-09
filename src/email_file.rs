@@ -153,6 +153,50 @@ pub fn validate_attachments(attachment_paths: &[String]) -> Result<()> {
     Ok(())
 }
 
+pub fn parse_draft_file_lenient(content: &str) -> EmailDraft {
+    let mut headers: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    let mut body = String::new();
+    let mut in_body = false;
+    let mut body_started = false;
+
+    for line in content.lines() {
+        if in_body {
+            if body_started {
+                body.push('\n');
+            } else {
+                body_started = true;
+            }
+            body.push_str(line);
+        } else {
+            if line.trim().is_empty() {
+                continue;
+            }
+            if let Some(colon_pos) = line.find(':') {
+                let field = line[..colon_pos].trim().to_lowercase();
+                let value = line[colon_pos + 1..].trim();
+                if field == "body" {
+                    in_body = true;
+                    if !value.is_empty() {
+                        body.push_str(value);
+                        body_started = true;
+                    }
+                } else {
+                    headers.insert(field, value.to_string());
+                }
+            }
+        }
+    }
+
+    EmailDraft {
+        to: headers.get("to").cloned().unwrap_or_default(),
+        cc: headers.get("cc").cloned().unwrap_or_default(),
+        bcc: headers.get("bcc").cloned().unwrap_or_default(),
+        subject: headers.get("subject").cloned().unwrap_or_default(),
+        body: body.trim().to_string(),
+        attachments: Vec::new(),
+    }
+}
+
 pub fn create_draft_template() -> String {
     r#"to:
 cc:

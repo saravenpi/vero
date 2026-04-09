@@ -58,6 +58,7 @@ async fn run_app<B: ratatui::backend::Backend>(
 
         maybe_spawn_inbox_load(&mut app, &mut inbox_load_task);
         maybe_spawn_sent_load(&mut app, &mut sent_load_task);
+        handle_drafts_load(&mut app);
         handle_editor_open(&mut app)?;
         handle_inbox_load_result(&mut app, &mut inbox_load_task).await?;
         handle_sent_load_result(&mut app, &mut sent_load_task).await?;
@@ -122,6 +123,26 @@ fn maybe_spawn_sent_load(app: &mut App, task: &mut Option<SentLoadTask>) {
     }
 }
 
+fn handle_drafts_load(app: &mut App) {
+    if !app.needs_drafts_load {
+        return;
+    }
+
+    app.needs_drafts_load = false;
+
+    if let Some(account) = app.current_account.as_ref() {
+        match storage::load_drafts(&account.email) {
+            Ok(drafts) => {
+                app.drafts = drafts;
+                app.drafts_error = None;
+            }
+            Err(e) => {
+                app.drafts_error = Some(format!("Failed to load drafts: {}", e));
+            }
+        }
+    }
+}
+
 fn handle_editor_open(app: &mut App) -> Result<()> {
     if !app.needs_editor_open {
         return Ok(());
@@ -134,46 +155,60 @@ fn handle_editor_open(app: &mut App) -> Result<()> {
         return Ok(());
     }
 
-    let Some(account) = app.current_account.clone() else {
+    if app.current_account.is_none() {
         app.error_message = Some("No account selected".to_string());
         app.navigate_to(Screen::Inbox);
         return Ok(());
     };
 
-    match storage::create_draft_file(&account.email) {
-        Ok(draft_path) => {
-            app.compose_draft_path = Some(draft_path.clone());
+    let existing_draft = app.compose_draft_path.clone();
+    let is_existing = existing_draft.is_some();
 
-            match crate::tui::external::open_editor_for_draft(
-                app.config.editor.as_ref().unwrap(),
-                &draft_path,
-            ) {
-                Ok(()) => {
-                    app.needs_full_redraw = true;
-                    match services::parse_draft_input(&draft_path) {
-                        Ok(parsed) => {
-                            app.compose_draft = parsed.to_draft();
-                            app.compose_step = ComposeStep::Preview;
-                            app.error_message = None;
-                        }
-                        Err(error) => {
-                            app.error_message = Some(format!("Draft parsing error: {}", error));
-                            app.navigate_to(Screen::Inbox);
-                            storage::delete_draft_file(&draft_path).ok();
-                        }
-                    }
+    let draft_path = if let Some(path) = existing_draft {
+        path
+    } else {
+        let account_email = app.current_account.as_ref().unwrap().email.clone();
+        match storage::create_draft_file(&account_email) {
+            Ok(path) => {
+                app.compose_draft_path = Some(path.clone());
+                path
+            }
+            Err(error) => {
+                app.error_message = Some(format!("Failed to create draft: {}", error));
+                app.navigate_to(Screen::Inbox);
+                return Ok(());
+            }
+        }
+    };
+
+    match crate::tui::external::open_editor_for_draft(
+        app.config.editor.as_ref().unwrap(),
+        &draft_path,
+    ) {
+        Ok(()) => {
+            app.needs_full_redraw = true;
+            match services::parse_draft_input(&draft_path) {
+                Ok(parsed) => {
+                    app.compose_draft = parsed.to_draft();
+                    app.compose_step = ComposeStep::Preview;
+                    app.error_message = None;
                 }
                 Err(error) => {
-                    app.needs_full_redraw = true;
-                    app.error_message = Some(format!("Editor error: {}", error));
-                    app.navigate_to(Screen::Inbox);
-                    storage::delete_draft_file(&draft_path).ok();
+                    app.error_message = Some(format!("Draft parsing error: {}", error));
+                    if !is_existing {
+                        storage::delete_draft_file(&draft_path).ok();
+                    }
+                    app.navigate_to(Screen::Drafts);
                 }
             }
         }
         Err(error) => {
-            app.error_message = Some(format!("Failed to create draft: {}", error));
-            app.navigate_to(Screen::Inbox);
+            app.needs_full_redraw = true;
+            app.error_message = Some(format!("Editor error: {}", error));
+            if !is_existing {
+                storage::delete_draft_file(&draft_path).ok();
+            }
+            app.navigate_to(Screen::Drafts);
         }
     }
 

@@ -31,6 +31,7 @@ pub async fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
                 app.inbox_emails[app.inbox_selected] = email;
                 app.inbox_scroll_offset = 0;
                 app.inbox_view_mode = ViewMode::Detail;
+                app.needs_full_redraw = true;
             }
         }
         KeyCode::Char('d') => {
@@ -57,7 +58,9 @@ pub async fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
             app.inbox_loading = true;
             app.inbox_error = None;
         }
-        KeyCode::Tab | KeyCode::BackTab => app.toggle_focus(),
+        KeyCode::Char('m') => app.toggle_focus(),
+        KeyCode::Tab => app.tab_next_screen(),
+        KeyCode::BackTab => app.tab_prev_screen(),
         _ => {}
     }
 
@@ -74,7 +77,9 @@ fn handle_menu_focus(app: &mut App, key: KeyEvent) {
         KeyCode::Down | KeyCode::Char('j') => app.menu_next(),
         KeyCode::Up | KeyCode::Char('k') => app.menu_previous(),
         KeyCode::Enter => app.menu_select(),
-        KeyCode::Tab | KeyCode::BackTab => app.toggle_focus(),
+        KeyCode::Char('m') => app.toggle_focus(),
+        KeyCode::Tab => app.tab_next_screen(),
+        KeyCode::BackTab => app.tab_prev_screen(),
         _ => {}
     }
 }
@@ -84,6 +89,7 @@ fn handle_detail_view(app: &mut App, key: KeyEvent) -> Result<()> {
         KeyCode::Esc => {
             app.inbox_view_mode = ViewMode::List;
             app.inbox_scroll_offset = 0;
+            app.needs_full_redraw = true;
         }
         KeyCode::Down | KeyCode::Char('j') => {
             app.inbox_scroll_offset = app.inbox_scroll_offset.saturating_add(1);
@@ -97,7 +103,9 @@ fn handle_detail_view(app: &mut App, key: KeyEvent) -> Result<()> {
         KeyCode::PageUp => {
             app.inbox_scroll_offset = app.inbox_scroll_offset.saturating_sub(10);
         }
-        KeyCode::Tab | KeyCode::BackTab => app.toggle_focus(),
+        KeyCode::Char('m') => app.toggle_focus(),
+        KeyCode::Tab => app.tab_next_screen(),
+        KeyCode::BackTab => app.tab_prev_screen(),
         KeyCode::Char('e') => {
             if app.inbox_selected < app.inbox_emails.len() {
                 let viewer = app.config.editor.as_ref().or(app.config.viewer.as_ref());

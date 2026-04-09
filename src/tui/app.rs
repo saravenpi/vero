@@ -6,6 +6,7 @@ use std::path::PathBuf;
 pub enum Screen {
     AccountSelection,
     Inbox,
+    Drafts,
     Sent,
     Compose,
 }
@@ -42,6 +43,11 @@ pub struct App {
     pub inbox_error: Option<String>,
     pub inbox_unseen_count: usize,
     pub inbox_scroll_offset: usize,
+
+    pub drafts: Vec<(PathBuf, EmailDraft)>,
+    pub drafts_selected: usize,
+    pub drafts_error: Option<String>,
+    pub needs_drafts_load: bool,
 
     pub sent_emails: Vec<Email>,
     pub sent_selected: usize,
@@ -107,6 +113,11 @@ impl App {
             inbox_unseen_count: 0,
             inbox_scroll_offset: 0,
 
+            drafts: Vec::new(),
+            drafts_selected: 0,
+            drafts_error: None,
+            needs_drafts_load: false,
+
             sent_emails: Vec::new(),
             sent_selected: 0,
             sent_view_mode: ViewMode::List,
@@ -136,7 +147,7 @@ impl App {
     }
 
     pub fn menu_items() -> Vec<&'static str> {
-        vec!["Inbox", "Sent", "Compose"]
+        vec!["Inbox", "Sent", "Drafts"]
     }
 
     pub fn navigate_to(&mut self, screen: Screen) {
@@ -151,6 +162,13 @@ impl App {
                 self.needs_inbox_load = true;
                 self.inbox_loading = true;
                 self.inbox_error = None;
+            }
+            Screen::Drafts => {
+                self.menu_selected = 2;
+                self.focused = FocusedElement::Content;
+                self.drafts_selected = 0;
+                self.drafts_error = None;
+                self.needs_drafts_load = true;
             }
             Screen::Sent => {
                 self.menu_selected = 1;
@@ -172,6 +190,17 @@ impl App {
                 self.focused = FocusedElement::Content;
             }
         }
+    }
+
+    pub fn resume_draft(&mut self, path: PathBuf) {
+        self.screen = Screen::Compose;
+        self.menu_selected = 2;
+        self.focused = FocusedElement::Content;
+        self.error_message = None;
+        self.compose_step = ComposeStep::Editing;
+        self.compose_draft = EmailDraft::default();
+        self.compose_draft_path = Some(path);
+        self.needs_editor_open = true;
     }
 
     pub fn menu_next(&mut self) {
@@ -196,7 +225,7 @@ impl App {
         match self.menu_selected {
             0 => self.navigate_to(Screen::Inbox),
             1 => self.navigate_to(Screen::Sent),
-            2 => self.navigate_to(Screen::Compose),
+            2 => self.navigate_to(Screen::Drafts),
             _ => {}
         }
     }
@@ -204,8 +233,28 @@ impl App {
     pub fn toggle_focus(&mut self) {
         self.focused = match self.focused {
             FocusedElement::MenuBar => FocusedElement::Content,
-            _ => FocusedElement::MenuBar,
+            FocusedElement::Content => FocusedElement::MenuBar,
         };
+    }
+
+    pub fn tab_next_screen(&mut self) {
+        match self.screen {
+            Screen::Inbox => self.navigate_to(Screen::Sent),
+            Screen::Sent => self.navigate_to(Screen::Drafts),
+            Screen::Drafts => self.navigate_to(Screen::Inbox),
+            Screen::Compose => self.navigate_to(Screen::Drafts),
+            Screen::AccountSelection => {}
+        }
+    }
+
+    pub fn tab_prev_screen(&mut self) {
+        match self.screen {
+            Screen::Inbox => self.navigate_to(Screen::Drafts),
+            Screen::Sent => self.navigate_to(Screen::Inbox),
+            Screen::Drafts => self.navigate_to(Screen::Sent),
+            Screen::Compose => self.navigate_to(Screen::Drafts),
+            Screen::AccountSelection => {}
+        }
     }
 
     pub fn select_next(&mut self) {
@@ -215,6 +264,11 @@ impl App {
                     && self.inbox_selected < self.inbox_emails.len() - 1
                 {
                     self.inbox_selected += 1;
+                }
+            }
+            Screen::Drafts => {
+                if !self.drafts.is_empty() && self.drafts_selected < self.drafts.len() - 1 {
+                    self.drafts_selected += 1;
                 }
             }
             Screen::Sent if self.sent_view_mode == ViewMode::List => {
@@ -236,6 +290,11 @@ impl App {
             Screen::Inbox if self.inbox_view_mode == ViewMode::List => {
                 if self.inbox_selected > 0 {
                     self.inbox_selected -= 1;
+                }
+            }
+            Screen::Drafts => {
+                if self.drafts_selected > 0 {
+                    self.drafts_selected -= 1;
                 }
             }
             Screen::Sent if self.sent_view_mode == ViewMode::List => {

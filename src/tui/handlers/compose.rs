@@ -49,11 +49,11 @@ pub async fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
                 }
             }
             KeyCode::Esc => {
-                if let Some(draft_path) = app.compose_draft_path.as_ref() {
-                    storage::delete_draft_file(draft_path).ok();
-                }
-                app.navigate_to(Screen::Inbox);
+                app.status_message = Some("Draft saved.".to_string());
+                app.navigate_to(Screen::Drafts);
             }
+            KeyCode::Tab => app.tab_next_screen(),
+            KeyCode::BackTab => app.tab_prev_screen(),
             _ => {}
         },
     }

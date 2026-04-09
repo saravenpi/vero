@@ -2,15 +2,15 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, Paragraph, Wrap},
+    widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Wrap},
     Frame,
 };
 
 use super::app::{App, ComposeStep, FocusedElement, Screen};
 use crate::models::ViewMode;
+use std::path::Path;
 
 const PRIMARY_COLOR: Color = Color::Cyan;
-const SECONDARY_COLOR: Color = Color::Magenta;
 const SUCCESS_COLOR: Color = Color::Green;
 const ERROR_COLOR: Color = Color::Red;
 
@@ -61,7 +61,7 @@ fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
 
     let logo = Paragraph::new(vec![
         Line::from(Span::styled(
-            "  ◆ VERO",
+            "  VERO",
             Style::default()
                 .fg(PRIMARY_COLOR)
                 .add_modifier(Modifier::BOLD),
@@ -78,7 +78,7 @@ fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
             let icon = match i {
                 0 => "▼ ",
                 1 => "▲ ",
-                2 => "✎ ",
+                2 => "✦ ",
                 _ => "  ",
             };
 
@@ -99,6 +99,8 @@ fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
 
             let content = if i == 0 && app.inbox_unseen_count > 0 {
                 format!(" {}{} ({})", icon, item, app.inbox_unseen_count)
+            } else if i == 2 && !app.drafts.is_empty() {
+                format!(" {}{} ({})", icon, item, app.drafts.len())
             } else {
                 format!(" {}{}", icon, item)
             };
@@ -111,8 +113,11 @@ fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
 }
 
 fn render_main_content(frame: &mut Frame, app: &App, area: Rect) {
+    frame.render_widget(Clear, area);
+
     match app.screen {
         Screen::Inbox => render_inbox_screen(frame, app, area),
+        Screen::Drafts => render_drafts_screen(frame, app, area),
         Screen::Sent => render_sent_screen(frame, app, area),
         Screen::Compose => render_compose_screen(frame, app, area),
         Screen::AccountSelection => {}
@@ -123,11 +128,12 @@ fn render_footer(frame: &mut Frame, app: &App, area: Rect) {
     let help_text = match app.screen {
         Screen::AccountSelection => "↑/↓: Navigate  Enter: Select  q: Quit",
         Screen::Inbox => {
-            "Enter: View  d: Delete  r: Refresh  u/s/a: Filter  e: Editor  Tab: Menu  q: Quit"
+            "n: New  Enter: View  d: Delete  r: Refresh  u/s/a: Filter  e: Editor  m: Menu  Tab: Switch  q: Quit"
         }
-        Screen::Sent => "Enter: View  r: Refresh  e: Editor  Tab: Menu  q: Quit",
+        Screen::Drafts => "n: New  Enter: Resume  d: Delete  r: Refresh  m: Menu  Tab: Switch  q: Quit",
+        Screen::Sent => "n: New  Enter: View  r: Refresh  e: Editor  m: Menu  Tab: Switch  q: Quit",
         Screen::Compose => match app.compose_step {
-            ComposeStep::Preview => "Enter: Send  e: Edit  ESC: Cancel  q: Quit",
+            ComposeStep::Preview => "Enter: Send  e: Edit  ESC: Save as draft  q: Quit",
             ComposeStep::NoEditor => "Any key: Return to menu  q: Quit",
             ComposeStep::Editing => "Editor is opening...",
         },
@@ -200,7 +206,7 @@ fn render_account_selection(frame: &mut Frame, app: &App, area: Rect) {
     let title = Paragraph::new(vec![
         Line::from(""),
         Line::from(Span::styled(
-            "◆ VERO",
+            "VERO",
             Style::default()
                 .fg(PRIMARY_COLOR)
                 .add_modifier(Modifier::BOLD),
@@ -358,6 +364,126 @@ fn render_inbox_screen(frame: &mut Frame, app: &App, area: Rect) {
                 Span::styled(spaces, Style::default().bg(bg_color).add_modifier(modifier)),
                 Span::styled(
                     from,
+                    Style::default()
+                        .fg(fg_color)
+                        .bg(bg_color)
+                        .add_modifier(if is_selected {
+                            modifier
+                        } else {
+                            modifier | Modifier::DIM
+                        }),
+                ),
+                Span::styled(" ", Style::default().bg(bg_color).add_modifier(modifier)),
+            ]);
+
+            ListItem::new(line)
+        })
+        .collect();
+
+    let list = List::new(items).block(block);
+    frame.render_widget(list, inner[0]);
+}
+
+fn render_drafts_screen(frame: &mut Frame, app: &App, area: Rect) {
+    let inner = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(0)])
+        .margin(1)
+        .split(area);
+
+    let title = format!(" ✦ Drafts ({}) ", app.drafts.len());
+
+    let block = Block::default()
+        .borders(Borders::NONE)
+        .title(Span::styled(title, Style::default().fg(PRIMARY_COLOR)));
+
+    if let Some(ref error) = app.drafts_error {
+        let error_text = Paragraph::new(error.as_str())
+            .block(block)
+            .style(Style::default().fg(ERROR_COLOR))
+            .alignment(Alignment::Center);
+        frame.render_widget(error_text, inner[0]);
+        return;
+    }
+
+    if app.drafts.is_empty() {
+        let empty = Paragraph::new("No drafts found")
+            .block(block)
+            .alignment(Alignment::Center);
+        frame.render_widget(empty, inner[0]);
+        return;
+    }
+
+    let available_width = inner[0].width.saturating_sub(4) as usize;
+
+    let items: Vec<ListItem> = app
+        .drafts
+        .iter()
+        .enumerate()
+        .map(|(i, (path, draft))| {
+            let is_selected = i == app.drafts_selected;
+
+            let (bg_color, fg_color, modifier) = if is_selected {
+                (
+                    PRIMARY_COLOR,
+                    Color::Reset,
+                    Modifier::BOLD | Modifier::REVERSED,
+                )
+            } else {
+                (Color::Reset, Color::Reset, Modifier::empty())
+            };
+
+            let subject_max = available_width.saturating_sub(35).max(20);
+            let to_max = 30;
+
+            let subject_raw = if draft.subject.is_empty() {
+                "(No Subject)".to_string()
+            } else {
+                draft.subject.clone()
+            };
+
+            let subject = if subject_raw.len() > subject_max {
+                let truncated: String = subject_raw
+                    .chars()
+                    .take(subject_max.saturating_sub(1))
+                    .collect();
+                format!("{}…", truncated)
+            } else {
+                subject_raw
+            };
+
+            let to_raw = if draft.to.is_empty() {
+                Path::new(path)
+                    .file_stem()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string()
+            } else {
+                format!("To: {}", draft.to)
+            };
+
+            let to_text = if to_raw.len() > to_max {
+                let truncated: String = to_raw.chars().take(to_max.saturating_sub(1)).collect();
+                format!("{}…", truncated)
+            } else {
+                to_raw
+            };
+
+            let padding = available_width.saturating_sub(subject.len() + to_text.len() + 2);
+            let spaces = " ".repeat(padding);
+
+            let line = Line::from(vec![
+                Span::styled(" ", Style::default().bg(bg_color).add_modifier(modifier)),
+                Span::styled(
+                    subject,
+                    Style::default()
+                        .fg(fg_color)
+                        .bg(bg_color)
+                        .add_modifier(modifier),
+                ),
+                Span::styled(spaces, Style::default().bg(bg_color).add_modifier(modifier)),
+                Span::styled(
+                    to_text,
                     Style::default()
                         .fg(fg_color)
                         .bg(bg_color)
@@ -552,15 +678,33 @@ fn render_email_detail(
     };
 
     let body_block = Block::default().borders(Borders::NONE).title(Span::styled(
-        " Body (j/k to scroll) ".to_string(),
-        Style::default().fg(SECONDARY_COLOR),
+        "Body (j/k to scroll)".to_string(),
+        Style::default().add_modifier(Modifier::DIM),
     ));
 
-    let body = Paragraph::new(email.body.as_str())
+    let body = Paragraph::new(sanitize_email_body(email.body.as_str()))
         .block(body_block)
         .wrap(Wrap { trim: false })
         .scroll((scroll_offset as u16, 0));
     frame.render_widget(body, inner[1]);
+}
+
+fn sanitize_email_body(body: &str) -> String {
+    let mut sanitized = String::with_capacity(body.len());
+    let mut chars = body.chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        match ch {
+            '\r' if matches!(chars.peek(), Some('\n')) => {}
+            '\r' => sanitized.push('\n'),
+            '\t' => sanitized.push_str("    "),
+            '\n' => sanitized.push('\n'),
+            _ if ch.is_control() => {}
+            _ => sanitized.push(ch),
+        }
+    }
+
+    sanitized
 }
 
 fn render_compose_screen(frame: &mut Frame, app: &App, area: Rect) {
@@ -719,5 +863,24 @@ fn render_compose_screen(frame: &mut Frame, app: &App, area: Rect) {
                 .wrap(Wrap { trim: false });
             frame.render_widget(preview, inner[0]);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::sanitize_email_body;
+
+    #[test]
+    fn sanitize_email_body_normalizes_crlf_and_tabs() {
+        let body = "one\r\ntwo\rthree\tfour";
+
+        assert_eq!(sanitize_email_body(body), "one\ntwo\nthree    four");
+    }
+
+    #[test]
+    fn sanitize_email_body_drops_other_control_chars() {
+        let body = "he\x00llo\x1b!";
+
+        assert_eq!(sanitize_email_body(body), "hello!");
     }
 }

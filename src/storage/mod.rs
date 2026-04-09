@@ -2,8 +2,8 @@ use anyhow::{Context, Result};
 use chrono::Utc;
 use std::path::PathBuf;
 
-use crate::email_file::{parse_stored_email_file, write_sent_email_file};
-use crate::models::Email;
+use crate::email_file::{parse_draft_file_lenient, parse_stored_email_file, write_sent_email_file};
+use crate::models::{Email, EmailDraft};
 
 const VERO_DIR: &str = ".vero";
 const SEEN_DIR: &str = "seen";
@@ -180,6 +180,34 @@ pub fn create_draft_file(account_email: &str) -> Result<PathBuf> {
     std::fs::write(&file_path, template).context("Failed to create draft file")?;
 
     Ok(file_path)
+}
+
+pub fn load_drafts(account_email: &str) -> Result<Vec<(PathBuf, EmailDraft)>> {
+    let drafts_path = get_drafts_dir(account_email)?;
+    ensure_dir(&drafts_path)?;
+
+    let entries = std::fs::read_dir(&drafts_path).context("Failed to read drafts directory")?;
+
+    let mut drafts = Vec::new();
+
+    for entry in entries.flatten() {
+        if let Ok(file_type) = entry.file_type() {
+            if file_type.is_file() {
+                if let Some(ext) = entry.path().extension() {
+                    if ext == "eml" {
+                        if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                            let draft = parse_draft_file_lenient(&content);
+                            drafts.push((entry.path(), draft));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    drafts.sort_by(|a, b| b.0.cmp(&a.0));
+
+    Ok(drafts)
 }
 
 pub fn delete_draft_file(draft_path: &PathBuf) -> Result<()> {

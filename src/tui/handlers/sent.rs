@@ -25,6 +25,7 @@ pub async fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
             if app.sent_selected < app.sent_emails.len() {
                 app.sent_scroll_offset = 0;
                 app.sent_view_mode = ViewMode::Detail;
+                app.needs_full_redraw = true;
             }
         }
         KeyCode::Char('r') => {
@@ -33,7 +34,9 @@ pub async fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
             app.sent_loading = true;
             app.sent_error = None;
         }
-        KeyCode::Tab | KeyCode::BackTab => app.toggle_focus(),
+        KeyCode::Char('m') => app.toggle_focus(),
+        KeyCode::Tab => app.tab_next_screen(),
+        KeyCode::BackTab => app.tab_prev_screen(),
         _ => {}
     }
 
@@ -50,7 +53,9 @@ fn handle_menu_focus(app: &mut App, key: KeyEvent) {
         KeyCode::Down | KeyCode::Char('j') => app.menu_next(),
         KeyCode::Up | KeyCode::Char('k') => app.menu_previous(),
         KeyCode::Enter => app.menu_select(),
-        KeyCode::Tab | KeyCode::BackTab => app.toggle_focus(),
+        KeyCode::Char('m') => app.toggle_focus(),
+        KeyCode::Tab => app.tab_next_screen(),
+        KeyCode::BackTab => app.tab_prev_screen(),
         _ => {}
     }
 }
@@ -60,6 +65,7 @@ fn handle_detail_view(app: &mut App, key: KeyEvent) -> Result<()> {
         KeyCode::Esc => {
             app.sent_view_mode = ViewMode::List;
             app.sent_scroll_offset = 0;
+            app.needs_full_redraw = true;
         }
         KeyCode::Down | KeyCode::Char('j') => {
             app.sent_scroll_offset = app.sent_scroll_offset.saturating_add(1);
@@ -73,7 +79,9 @@ fn handle_detail_view(app: &mut App, key: KeyEvent) -> Result<()> {
         KeyCode::PageUp => {
             app.sent_scroll_offset = app.sent_scroll_offset.saturating_sub(10);
         }
-        KeyCode::Tab | KeyCode::BackTab => app.toggle_focus(),
+        KeyCode::Char('m') => app.toggle_focus(),
+        KeyCode::Tab => app.tab_next_screen(),
+        KeyCode::BackTab => app.tab_prev_screen(),
         KeyCode::Char('e') => {
             if app.sent_selected < app.sent_emails.len() {
                 let viewer = app.config.editor.as_ref().or(app.config.viewer.as_ref());
