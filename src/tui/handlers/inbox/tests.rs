@@ -52,3 +52,33 @@ async fn leaving_detail_view_triggers_background_refresh() {
     assert!(app.inbox_error.is_none());
     assert!(app.needs_full_redraw);
 }
+
+#[tokio::test]
+async fn detail_view_supports_gg_and_g_scroll_jumps() {
+    let mut app = test_app();
+    app.focused = FocusedElement::Content;
+    app.inbox_view_mode = ViewMode::Detail;
+    app.inbox_scroll_offset = 7;
+
+    handle(
+        &mut app,
+        KeyEvent::new(KeyCode::Char('g'), KeyModifiers::NONE),
+    )
+    .await
+    .unwrap();
+    handle(
+        &mut app,
+        KeyEvent::new(KeyCode::Char('g'), KeyModifiers::NONE),
+    )
+    .await
+    .unwrap();
+    assert_eq!(app.inbox_scroll_offset, 0);
+
+    handle(
+        &mut app,
+        KeyEvent::new(KeyCode::Char('G'), KeyModifiers::SHIFT),
+    )
+    .await
+    .unwrap();
+    assert_eq!(app.inbox_scroll_offset, usize::MAX);
+}

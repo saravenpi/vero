@@ -27,3 +27,4 @@ mailparse = "0.15"
 futures = "0.3"
 encoded-words = "0.2"
 unicode-width = "0.2"
+html2text = { version = "0.16", features = ["css"] }

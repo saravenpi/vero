@@ -3,13 +3,21 @@ use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::models::ViewMode;
 use crate::tui::external::open_email_in_viewer;
+use crate::tui::handlers::common;
 use crate::tui::App;
 
 pub(super) fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
+    if common::handle_list_jump(app, key) {
+        return Ok(());
+    }
+
     match key.code {
         KeyCode::Esc => {
             app.inbox_view_mode = ViewMode::List;
             app.inbox_scroll_offset = 0;
+            if app.inbox_cache_loaded {
+                app.refresh_inbox_emails(None);
+            }
             app.needs_inbox_load = true;
             app.inbox_loading = true;
             app.inbox_error = None;

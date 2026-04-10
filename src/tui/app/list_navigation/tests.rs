@@ -1,5 +1,8 @@
 use super::*;
-use crate::tui::test_support::{test_app, test_draft_named, test_email};
+use crate::{
+    models::ViewMode,
+    tui::test_support::{test_app, test_draft_named, test_email},
+};
 
 #[test]
 fn double_g_moves_inbox_selection_to_top() {
@@ -100,4 +103,27 @@ fn non_g_key_clears_pending_list_jump() {
     assert!(!app.handle_list_jump_key(KeyCode::Enter));
     assert!(app.handle_list_jump_key(KeyCode::Char('g')));
     assert_eq!(app.inbox_selected, 2);
+}
+
+#[test]
+fn double_g_moves_inbox_detail_scroll_to_top() {
+    let mut app = test_app();
+    app.screen = Screen::Inbox;
+    app.inbox_view_mode = ViewMode::Detail;
+    app.inbox_scroll_offset = 9;
+
+    assert!(app.handle_list_jump_key(KeyCode::Char('g')));
+    assert!(app.handle_list_jump_key(KeyCode::Char('g')));
+    assert_eq!(app.inbox_scroll_offset, 0);
+}
+
+#[test]
+fn uppercase_g_moves_sent_detail_scroll_to_bottom_marker() {
+    let mut app = test_app();
+    app.screen = Screen::Sent;
+    app.sent_view_mode = ViewMode::Detail;
+    app.sent_scroll_offset = 3;
+
+    assert!(app.handle_list_jump_key(KeyCode::Char('G')));
+    assert_eq!(app.sent_scroll_offset, usize::MAX);
 }

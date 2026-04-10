@@ -11,14 +11,11 @@ use ratatui::{
 use crate::models::{InboxFilter, ViewMode};
 use crate::tui::App;
 
-use super::{
-    detail, list,
-    theme::PRIMARY_COLOR,
-};
+use super::{detail, list, theme::PRIMARY_COLOR};
 
 pub(crate) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     if app.inbox_view_mode == ViewMode::Detail {
-        detail::render(frame, app, area, &app.inbox_emails, app.inbox_selected);
+        detail::render(frame, app, area);
         return;
     }
 
@@ -54,7 +51,7 @@ pub(crate) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         .title(Span::styled(title(app), Style::default().fg(PRIMARY_COLOR)));
 
     if app.inbox_emails.is_empty() {
-        let empty_text = if app.inbox_loading {
+        let empty_text = if app.inbox_loading && !app.inbox_cache_loaded {
             "No cached emails"
         } else {
             "No emails found"

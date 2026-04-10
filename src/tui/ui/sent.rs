@@ -17,7 +17,7 @@ use super::{
 
 pub(crate) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     if app.sent_view_mode == ViewMode::Detail {
-        detail::render(frame, app, area, &app.sent_emails, app.sent_selected);
+        detail::render(frame, app, area);
         return;
     }
 

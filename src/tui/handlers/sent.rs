@@ -69,6 +69,10 @@ fn delete_selected_sent_email(app: &mut App) -> Result<()> {
 }
 
 fn handle_detail_view(app: &mut App, key: KeyEvent) -> Result<()> {
+    if common::handle_list_jump(app, key) {
+        return Ok(());
+    }
+
     match key.code {
         KeyCode::Esc => {
             app.sent_view_mode = ViewMode::List;

@@ -9,8 +9,12 @@ impl App {
     pub fn select_first(&mut self) {
         match self.screen {
             Screen::Inbox if self.inbox_view_mode == ViewMode::List => self.jump_to_inbox(0),
+            Screen::Inbox if self.inbox_view_mode == ViewMode::Detail => {
+                self.inbox_scroll_offset = 0
+            }
             Screen::Drafts => self.jump_to_drafts(0),
             Screen::Sent if self.sent_view_mode == ViewMode::List => self.jump_to_sent(0),
+            Screen::Sent if self.sent_view_mode == ViewMode::Detail => self.sent_scroll_offset = 0,
             Screen::AccountSelection => {
                 self.account_selected = 0;
             }
@@ -24,6 +28,9 @@ impl App {
                 let last = self.inbox_emails.len().saturating_sub(1);
                 self.jump_to_inbox(last);
             }
+            Screen::Inbox if self.inbox_view_mode == ViewMode::Detail => {
+                self.inbox_scroll_offset = usize::MAX;
+            }
             Screen::Drafts => {
                 let last = self.drafts.len().saturating_sub(1);
                 self.jump_to_drafts(last);
@@ -31,6 +38,9 @@ impl App {
             Screen::Sent if self.sent_view_mode == ViewMode::List => {
                 let last = self.sent_emails.len().saturating_sub(1);
                 self.jump_to_sent(last);
+            }
+            Screen::Sent if self.sent_view_mode == ViewMode::Detail => {
+                self.sent_scroll_offset = usize::MAX;
             }
             Screen::AccountSelection => {
                 self.account_selected = self.config.accounts.len().saturating_sub(1);
