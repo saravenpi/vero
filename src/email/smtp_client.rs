@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use lettre::message::{header, Mailbox, MultiPart, SinglePart};
+use lettre::message::{header, Attachment, Mailbox, MultiPart, SinglePart};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
 
@@ -48,16 +48,12 @@ pub async fn send_email(cfg: &SmtpConfig, from: &str, draft: EmailDraft) -> Resu
                 let file_data = std::fs::read(file_path)
                     .with_context(|| format!("Failed to read attachment: {}", file_path))?;
 
-                let content_type: header::ContentType = attachment
-                    .content_type
-                    .parse()
-                    .unwrap_or_else(|_| "application/octet-stream".parse().unwrap());
+                let content_type = header::ContentType::parse(&attachment.content_type)
+                    .or_else(|_| header::ContentType::parse("application/octet-stream"))
+                    .context("Failed to build attachment content type")?;
 
                 multipart = multipart.singlepart(
-                    SinglePart::builder()
-                        .header(content_type)
-                        .header(header::ContentDisposition::attachment(&attachment.filename))
-                        .body(file_data),
+                    Attachment::new(attachment.filename.clone()).body(file_data, content_type),
                 );
             }
         }

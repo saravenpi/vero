@@ -14,6 +14,24 @@ pub async fn load_inbox(account: &Account, filter: InboxFilter) -> Result<InboxS
         crate::email::fetch_unseen_count(&account.imap)
     )?;
 
+    let _ = crate::storage::save_cached_inbox_emails(&account.email, &emails);
+
+    Ok(InboxSnapshot {
+        emails,
+        unseen_count,
+    })
+}
+
+pub fn load_cached_inbox(account: &Account, filter: InboxFilter) -> Result<InboxSnapshot> {
+    let mut emails = crate::storage::load_cached_inbox_emails(&account.email)?;
+    let unseen_count = emails.iter().filter(|email| !email.is_seen).count();
+
+    emails.retain(|email| match filter {
+        InboxFilter::Unseen => !email.is_seen,
+        InboxFilter::Seen => email.is_seen,
+        InboxFilter::All => true,
+    });
+
     Ok(InboxSnapshot {
         emails,
         unseen_count,
@@ -30,6 +48,7 @@ pub async fn read_loaded_inbox_email(account: &Account, mut email: Email) -> Res
 
     email.body = body;
     email.attachments = attachments;
+    email.is_seen = true;
 
     crate::storage::save_seen_email(&account.email, email.clone())?;
 

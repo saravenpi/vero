@@ -44,6 +44,7 @@ pub async fn send_draft(account: &Account, draft: EmailDraft) -> Result<Email> {
         timestamp: Utc::now(),
         attachments: draft.attachments.clone(),
         uid: 0,
+        is_seen: true,
     };
 
     crate::storage::save_sent_email(&account.email, email.clone())?;

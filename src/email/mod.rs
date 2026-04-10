@@ -1,3 +1,4 @@
+pub(crate) mod date;
 mod imap_client;
 mod smtp_client;
 

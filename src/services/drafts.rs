@@ -23,11 +23,11 @@ pub fn read_text_input(path: &Path) -> Result<String> {
     std::fs::read_to_string(path).with_context(|| format!("Failed to read {}", path.display()))
 }
 
-pub fn create_template() -> String {
-    email_file::create_draft_template()
+pub fn create_template(signature: Option<&str>) -> String {
+    email_file::create_draft_template(signature)
 }
 
 pub fn write_template(path: &Path) -> Result<()> {
-    std::fs::write(path, create_template())
+    std::fs::write(path, create_template(None))
         .with_context(|| format!("Failed to write {}", path.display()))
 }

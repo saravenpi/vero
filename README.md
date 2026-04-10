@@ -119,6 +119,7 @@ body: Your message here
 ```
 ~/.vero/<account>/
 ├── drafts/
+├── inbox/
 ├── seen/
 └── sent/
 ```

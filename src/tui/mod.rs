@@ -5,6 +5,9 @@ mod handlers;
 mod runtime;
 mod ui;
 
+#[cfg(test)]
+pub(crate) mod test_support;
+
 pub use app::App;
 pub use events::{AppEvent, EventHandler};
 pub use runtime::run;

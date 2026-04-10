@@ -1,8 +1,10 @@
 mod account_selection;
+mod common;
 mod compose;
 mod drafts;
 mod inbox;
 mod sent;
+mod signatures;
 
 use anyhow::Result;
 use crossterm::event::{KeyCode, KeyEvent};
@@ -24,5 +26,6 @@ pub async fn handle_key_event(app: &mut App, key: KeyEvent) -> Result<()> {
         Screen::Drafts => drafts::handle(app, key).await,
         Screen::Sent => sent::handle(app, key).await,
         Screen::Compose => compose::handle(app, key).await,
+        Screen::Signatures => signatures::handle(app, key).await,
     }
 }

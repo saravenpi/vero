@@ -2,18 +2,24 @@ use anyhow::Result;
 use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::models::ViewMode;
+use crate::storage;
 use crate::tui::app::{FocusedElement, Screen};
 use crate::tui::external::open_email_in_viewer;
+use crate::tui::handlers::common;
 use crate::tui::App;
 
 pub async fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
     if app.focused == FocusedElement::MenuBar {
-        handle_menu_focus(app, key);
+        common::handle_menu_focus(app, key);
         return Ok(());
     }
 
     if app.sent_view_mode == ViewMode::Detail {
         handle_detail_view(app, key)?;
+        return Ok(());
+    }
+
+    if common::handle_list_jump(app, key) {
         return Ok(());
     }
 
@@ -28,13 +34,12 @@ pub async fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
                 app.needs_full_redraw = true;
             }
         }
+        KeyCode::Char('d') => delete_selected_sent_email(app)?,
         KeyCode::Char('r') => {
-            app.cancel_sent_load = false;
             app.needs_sent_load = true;
             app.sent_loading = true;
             app.sent_error = None;
         }
-        KeyCode::Char('m') => app.toggle_focus(),
         KeyCode::Tab => app.tab_next_screen(),
         KeyCode::BackTab => app.tab_prev_screen(),
         _ => {}
@@ -43,21 +48,24 @@ pub async fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
     Ok(())
 }
 
-fn handle_menu_focus(app: &mut App, key: KeyEvent) {
-    match key.code {
-        KeyCode::Esc => {
-            if app.config.accounts.len() > 1 {
-                app.navigate_to(Screen::AccountSelection);
-            }
-        }
-        KeyCode::Down | KeyCode::Char('j') => app.menu_next(),
-        KeyCode::Up | KeyCode::Char('k') => app.menu_previous(),
-        KeyCode::Enter => app.menu_select(),
-        KeyCode::Char('m') => app.toggle_focus(),
-        KeyCode::Tab => app.tab_next_screen(),
-        KeyCode::BackTab => app.tab_prev_screen(),
-        _ => {}
+fn delete_selected_sent_email(app: &mut App) -> Result<()> {
+    if app.sent_selected >= app.sent_emails.len() {
+        return Ok(());
     }
+
+    let Some(account) = app.current_account.clone() else {
+        app.set_error("No account selected");
+        return Ok(());
+    };
+
+    let email = &app.sent_emails[app.sent_selected];
+    storage::delete_sent_email(&account.email, email)?;
+
+    app.sent_emails.remove(app.sent_selected);
+    app.clamp_sent_selection();
+    app.set_status("Email deleted.");
+
+    Ok(())
 }
 
 fn handle_detail_view(app: &mut App, key: KeyEvent) -> Result<()> {
@@ -79,7 +87,6 @@ fn handle_detail_view(app: &mut App, key: KeyEvent) -> Result<()> {
         KeyCode::PageUp => {
             app.sent_scroll_offset = app.sent_scroll_offset.saturating_sub(10);
         }
-        KeyCode::Char('m') => app.toggle_focus(),
         KeyCode::Tab => app.tab_next_screen(),
         KeyCode::BackTab => app.tab_prev_screen(),
         KeyCode::Char('e') => {

@@ -1,28 +1,31 @@
 use async_native_tls::TlsConnector;
 use async_std::net::TcpStream;
 use futures::StreamExt;
+use std::env;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Using your Infomaniak account
-    let host = "mail.infomaniak.com";
-    let port = 993;
-    let user = "thevyann@ik.me";
-    let password = "7WNRSGtty%qfi8";
+    let host = env::var("VERO_IMAP_DEBUG_HOST").unwrap_or_else(|_| "mail.infomaniak.com".into());
+    let port = env::var("VERO_IMAP_DEBUG_PORT")
+        .ok()
+        .and_then(|port| port.parse::<u16>().ok())
+        .unwrap_or(993);
+    let user = env::var("VERO_IMAP_DEBUG_USER")?;
+    let password = env::var("VERO_IMAP_DEBUG_PASSWORD")?;
 
     println!("Connecting to {}:{}...", host, port);
-    let tcp_stream = TcpStream::connect((host, port)).await?;
+    let tcp_stream = TcpStream::connect((host.as_str(), port)).await?;
     println!("TCP connected");
 
     let tls = TlsConnector::new();
-    let tls_stream = tls.connect(host, tcp_stream).await?;
+    let tls_stream = tls.connect(&host, tcp_stream).await?;
     println!("TLS connected");
 
     let client = async_imap::Client::new(tls_stream);
     println!("Logging in as {}...", user);
 
     let mut session = client
-        .login(user, password)
+        .login(&user, &password)
         .await
         .map_err(|e| format!("Login failed: {}", e.0))?;
     println!("Login successful");
@@ -61,9 +64,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         seen_uids
     );
 
-    if !all_uids.is_empty() {
+    if let Some(first_uid) = all_uids.iter().next().copied() {
         println!("\n--- Fetching first email details ---");
-        let first_uid = *all_uids.iter().next().unwrap();
         let mut messages = session
             .uid_fetch(first_uid.to_string(), "ENVELOPE FLAGS")
             .await?;
@@ -86,10 +88,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let folders = session.list(None, Some("*")).await?;
     let folder_list: Vec<_> = folders.collect().await;
     println!("Found {} folders:", folder_list.len());
-    for folder in folder_list {
-        if let Ok(f) = folder {
-            println!("  - {}", f.name());
-        }
+    for folder in folder_list.into_iter().flatten() {
+        println!("  - {}", folder.name());
     }
 
     session.logout().await?;

@@ -27,6 +27,8 @@ pub struct Email {
     pub attachments: Vec<Attachment>,
     #[serde(default, skip_serializing_if = "is_zero_uid")]
     pub uid: u32,
+    #[serde(default, skip)]
+    pub is_seen: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
