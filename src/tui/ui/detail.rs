@@ -66,7 +66,7 @@ fn render_email_detail(
     let unknown = String::from("Unknown");
     let to = email.to.as_ref().unwrap_or(&unknown);
     let header_text = vec![
-        Line::from(Span::styled(format!(" {} ", subject_text), header_style)),
+        Line::from(Span::styled(format!("{} ", subject_text), header_style)),
         Line::from(vec![
             Span::styled("From: ", Style::default().add_modifier(Modifier::DIM)),
             Span::styled(&email.from, Style::default()),
