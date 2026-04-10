@@ -18,7 +18,17 @@ pub(crate) fn render_footer(frame: &mut Frame, app: &App, area: Rect) {
             ViewMode::Detail if app.inbox_show_attachments => {
                 "j/k: Navigate  Enter: Download  a: All  Esc: Back"
             }
-            ViewMode::Detail => "d: Attachments  e: Editor  Esc: Back  Tab: Switch",
+            ViewMode::Detail => {
+                let has_attachments = app
+                    .inbox_emails
+                    .get(app.inbox_selected)
+                    .is_some_and(|e| !e.attachments.is_empty());
+                if has_attachments {
+                    "d: Attachments  e: Editor  Esc: Back  Tab: Switch"
+                } else {
+                    "e: Editor  Esc: Back  Tab: Switch"
+                }
+            }
         },
         Screen::Drafts => "n: New  Enter: Resume  d: Delete  r: Refresh  Tab: Switch",
         Screen::Sent => match app.sent_view_mode {

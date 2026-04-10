@@ -1,4 +1,5 @@
 use anyhow::Result;
+use dirs;
 
 use crate::cli::output;
 use crate::cli::types::{InboxCommand, OutputFormat};
@@ -33,10 +34,15 @@ pub(super) async fn execute(
             output::print_deleted(output, uid)
         }
         InboxCommand::Download { uid, index } => {
-            let folder = config
-                .download_folder
-                .as_deref()
-                .unwrap_or("~/Downloads");
+            let default_folder;
+            let folder = if let Some(f) = config.download_folder.as_deref() {
+                f
+            } else {
+                default_folder = dirs::home_dir()
+                    .map(|h| h.join("Downloads").to_string_lossy().into_owned())
+                    .unwrap_or_else(|| ".".to_string());
+                default_folder.as_str()
+            };
             let paths =
                 services::download_inbox_attachments(&account, uid, index, folder).await?;
             output::print_download_result(output, &paths)

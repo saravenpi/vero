@@ -3,6 +3,10 @@ use std::path::{Path, PathBuf};
 
 use crate::config::Account;
 
+fn expand_folder(folder: &str) -> String {
+    shellexpand::tilde(folder).into_owned()
+}
+
 pub async fn download_inbox_attachments(
     account: &Account,
     uid: u32,
@@ -22,9 +26,10 @@ pub async fn download_inbox_attachments(
         None => all,
     };
 
+    let folder = expand_folder(folder);
     let mut saved = Vec::new();
     for (attachment, bytes) in selected {
-        let path = save_bytes(&attachment.filename, &bytes, folder)?;
+        let path = save_bytes(&attachment.filename, &bytes, &folder)?;
         saved.push(path);
     }
 
