@@ -110,10 +110,8 @@ fn render_email_detail(
         return;
     }
 
-    let mut scrollbar_state = ScrollbarState::new(body_line_count.max(1)).position(*scroll_offset);
-    if viewport_height > 0 {
-        scrollbar_state = scrollbar_state.viewport_content_length(viewport_height);
-    }
+    let scrollbar_content_length = if max_scroll == 0 { 1 } else { max_scroll + 1 };
+    let mut scrollbar_state = ScrollbarState::new(scrollbar_content_length).position(*scroll_offset);
 
     frame.render_stateful_widget(
         Scrollbar::new(ScrollbarOrientation::VerticalRight)

@@ -23,27 +23,25 @@ fn sanitize_email_body_drops_other_control_chars() {
 }
 
 #[test]
-fn inbox_title_shows_refresh_state_without_hiding_cached_emails() {
+fn inbox_title_shows_count() {
     let mut app = test_app();
     app.inbox_filter = InboxFilter::All;
     app.inbox_emails = vec![test_email(1)];
-    app.inbox_loading = true;
 
     let title = inbox::title(&app);
 
-    assert!(title.contains("Inbox - All (1)"));
-    assert!(title.contains("Refreshing"));
+    assert_eq!(title, " ▼ Inbox (1) ");
 }
 
 #[test]
-fn inbox_title_shows_refresh_failure_when_cached_emails_exist() {
+fn inbox_title_ignores_refresh_and_error_state() {
     let mut app = test_app();
     app.inbox_filter = InboxFilter::Unseen;
     app.inbox_emails = vec![test_email(1), test_email(2)];
-    app.inbox_loading = false;
+    app.inbox_loading = true;
     app.inbox_error = Some("nope".to_string());
 
-    assert_eq!(inbox::title(&app), " ▼ Inbox - Unseen (2)  Refresh failed ");
+    assert_eq!(inbox::title(&app), " ▼ Inbox (2) ");
 }
 
 #[test]

@@ -16,7 +16,7 @@ impl App {
             Screen::AccountSelection
         };
 
-        let inbox_filter = InboxFilter::from_str(&config.inbox_view);
+        let inbox_filter = InboxFilter::All;
         let should_load_inbox = current_account.is_some();
 
         Self {
@@ -27,6 +27,8 @@ impl App {
             account_selected: 0,
             menu_selected: 0,
             inbox_filter,
+            inbox_cached_emails: Vec::new(),
+            inbox_cache_loaded: false,
             inbox_emails: Vec::new(),
             inbox_selected: 0,
             inbox_view_mode: ViewMode::List,
@@ -63,6 +65,9 @@ impl App {
             needs_sent_load: false,
             needs_editor_open: false,
             needs_full_redraw: false,
+            needs_email_send: false,
+            is_sending_email: false,
+            pre_compose_screen: None,
             spinner_state: 0,
             pending_list_navigation: None,
         }
@@ -70,5 +75,25 @@ impl App {
 
     pub fn menu_items() -> Vec<&'static str> {
         vec!["Inbox", "Sent", "Drafts", "Signatures"]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::VeroConfig;
+
+    #[test]
+    fn app_new_defaults_to_all_filter() {
+        let config = VeroConfig {
+            accounts: Vec::new(),
+            download_folder: None,
+            inbox_view: "unseen".to_string(), // Should be overridden to All
+            auto_refresh: crate::config::AutoRefresh { seconds: 0 },
+            viewer: None,
+            editor: None,
+        };
+        let app = App::new(config);
+        assert_eq!(app.inbox_filter, InboxFilter::All);
     }
 }

@@ -1,3 +1,4 @@
+mod inbox;
 mod lifecycle;
 mod list_navigation;
 mod navigation;
@@ -47,6 +48,8 @@ pub struct App {
     pub menu_selected: usize,
 
     pub inbox_filter: InboxFilter,
+    pub inbox_cached_emails: Vec<Email>,
+    pub inbox_cache_loaded: bool,
     pub inbox_emails: Vec<Email>,
     pub inbox_selected: usize,
     pub inbox_view_mode: ViewMode,
@@ -90,6 +93,9 @@ pub struct App {
     pub needs_sent_load: bool,
     pub needs_editor_open: bool,
     pub needs_full_redraw: bool,
+    pub needs_email_send: bool,
+    pub is_sending_email: bool,
+    pub pre_compose_screen: Option<Screen>,
 
     pub spinner_state: usize,
 

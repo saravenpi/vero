@@ -45,10 +45,7 @@ pub(crate) fn render(frame: &mut Frame, app: &App, area: Rect) {
             .chain(sig.lines().map(|l| Line::from(l.to_string())))
             .collect();
 
-            frame.render_widget(
-                Paragraph::new(preview_lines).block(block),
-                inner[0],
-            );
+            frame.render_widget(Paragraph::new(preview_lines).block(block), inner[0]);
         }
     }
 }

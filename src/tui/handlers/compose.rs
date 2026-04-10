@@ -2,7 +2,6 @@ use anyhow::Result;
 use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::services;
-use crate::storage;
 use crate::tui::app::{ComposeStep, Screen};
 use crate::tui::external::open_editor_for_draft;
 use crate::tui::App;
@@ -15,18 +14,9 @@ pub async fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
         ComposeStep::Editing => {}
         ComposeStep::Preview => match key.code {
             KeyCode::Enter => {
-                let Some(account) = app.current_account.clone() else {
-                    app.set_error("No account selected");
-                    return Ok(());
-                };
-                services::send_draft(&account, app.compose_draft.clone()).await?;
-
-                if let Some(draft_path) = app.compose_draft_path.as_ref() {
-                    storage::delete_draft_file(draft_path).ok();
+                if !app.needs_email_send {
+                    app.needs_email_send = true;
                 }
-
-                app.set_status("Email sent successfully!");
-                app.navigate_to(Screen::Inbox);
             }
             KeyCode::Char('e') => {
                 if let (Some(draft_path), Some(editor)) =

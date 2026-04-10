@@ -72,12 +72,15 @@ pub(super) fn render(frame: &mut Frame, app: &App, area: Rect) {
     preview_lines.push(Line::from(""));
     preview_lines.push(Line::from(app.compose_draft.body.as_str()));
     preview_lines.push(Line::from(""));
-    preview_lines.push(Line::from(Span::styled(
-        "Enter: Send  |  e: Edit again  |  ESC: Cancel",
-        Style::default()
-            .fg(SUCCESS_COLOR)
-            .add_modifier(Modifier::ITALIC),
-    )));
+
+    if !app.is_sending_email {
+        preview_lines.push(Line::from(Span::styled(
+            "Enter: Send  |  e: Edit again  |  ESC: Cancel",
+            Style::default()
+                .fg(SUCCESS_COLOR)
+                .add_modifier(Modifier::ITALIC),
+        )));
+    }
 
     frame.render_widget(
         Paragraph::new(preview_lines)

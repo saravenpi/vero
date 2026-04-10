@@ -16,9 +16,9 @@ use crate::tui::{handlers, is_quit_key, render, App, AppEvent, EventHandler};
 
 use editor::handle_editor_open;
 use loading::{
-    handle_drafts_load, handle_inbox_load_result, handle_sent_load_result,
-    handle_signature_load, maybe_load_cached_inbox, maybe_spawn_inbox_load,
-    maybe_spawn_sent_load, InboxLoadTask, SentLoadTask,
+    handle_drafts_load, handle_inbox_load_result, handle_send_result, handle_sent_load_result,
+    handle_signature_load, maybe_load_cached_inbox, maybe_spawn_inbox_load, maybe_spawn_send,
+    maybe_spawn_sent_load, ComposeSendTask, InboxLoadTask, SentLoadTask,
 };
 
 pub async fn run(config: VeroConfig) -> Result<()> {
@@ -50,6 +50,7 @@ async fn run_app<B: ratatui::backend::Backend>(
     let mut events = EventHandler::new(Duration::from_millis(100));
     let mut inbox_load_task: Option<InboxLoadTask> = None;
     let mut sent_load_task: Option<SentLoadTask> = None;
+    let mut compose_send_task: Option<ComposeSendTask> = None;
 
     loop {
         if app.needs_full_redraw {
@@ -68,11 +69,13 @@ async fn run_app<B: ratatui::backend::Backend>(
         }
         maybe_spawn_inbox_load(&mut app, &mut inbox_load_task);
         maybe_spawn_sent_load(&mut app, &mut sent_load_task);
+        maybe_spawn_send(&mut app, &mut compose_send_task);
         handle_drafts_load(&mut app);
         handle_signature_load(&mut app);
         handle_editor_open(&mut app)?;
         handle_inbox_load_result(&mut app, &mut inbox_load_task).await?;
         handle_sent_load_result(&mut app, &mut sent_load_task).await?;
+        handle_send_result(&mut app, &mut compose_send_task).await?;
 
         if app.tick_auto_refresh() {
             app.needs_inbox_load = true;

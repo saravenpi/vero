@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 impl App {
     pub fn navigate_to(&mut self, screen: Screen) {
+        let current_screen = self.screen;
         self.clear_pending_list_navigation();
         self.screen = screen;
         self.error_message = None;
@@ -41,6 +42,7 @@ impl App {
                 self.sent_error = None;
             }
             Screen::Compose => {
+                self.pre_compose_screen = Some(current_screen);
                 self.menu_selected = 2;
                 self.focused = FocusedElement::Content;
                 self.compose_step = ComposeStep::Editing;
@@ -61,6 +63,7 @@ impl App {
 
     pub fn resume_draft(&mut self, path: PathBuf) {
         self.clear_pending_list_navigation();
+        self.pre_compose_screen = Some(Screen::Drafts);
         self.screen = Screen::Compose;
         self.menu_selected = 2;
         self.focused = FocusedElement::Content;

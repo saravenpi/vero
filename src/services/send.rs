@@ -47,7 +47,13 @@ pub async fn send_draft(account: &Account, draft: EmailDraft) -> Result<Email> {
         is_seen: true,
     };
 
-    crate::storage::save_sent_email(&account.email, email.clone())?;
+    let account_email = account.email.clone();
+    let email_to_save = email.clone();
+    tokio::task::spawn_blocking(move || {
+        crate::storage::save_sent_email(&account_email, email_to_save)
+    })
+    .await
+    .context("Failed to spawn sent email storage task")??;
 
     Ok(email)
 }

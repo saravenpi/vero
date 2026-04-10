@@ -54,7 +54,10 @@ pub fn delete_sent_email(account_email: &str, email: &Email) -> Result<()> {
         }
     }
 
-    anyhow::bail!("Sent email file not found for timestamp {}", timestamp_prefix)
+    anyhow::bail!(
+        "Sent email file not found for timestamp {}",
+        timestamp_prefix
+    )
 }
 
 fn load_emails_from_dir(dir_path: &Path) -> Result<Vec<Email>> {

@@ -17,9 +17,7 @@ pub(crate) fn render_footer(frame: &mut Frame, app: &App, area: Rect) {
             ViewMode::List => "n: New  d: Delete  r: Refresh  Tab: Switch",
             ViewMode::Detail => "e: Editor  Esc: Back  Tab: Switch",
         },
-        Screen::Drafts => {
-            "n: New  Enter: Resume  d: Delete  r: Refresh  Tab: Switch"
-        }
+        Screen::Drafts => "n: New  Enter: Resume  d: Delete  r: Refresh  Tab: Switch",
         Screen::Sent => match app.sent_view_mode {
             ViewMode::List => "n: New  d: Delete  r: Refresh  Tab: Switch",
             ViewMode::Detail => "e: Editor  Esc: Back  Tab: Switch",
@@ -57,6 +55,11 @@ pub(crate) fn render_footer(frame: &mut Frame, app: &App, area: Rect) {
             format!(" {} Loading email… ", app.spinner_char()),
             Style::default().add_modifier(Modifier::DIM),
         ))
+    } else if app.is_sending_email {
+        Line::from(Span::styled(
+            format!(" {} Sending email… ", app.spinner_char()),
+            Style::default().fg(SUCCESS_COLOR),
+        ))
     } else if app.inbox_loading {
         Line::from(Span::styled(
             format!(" {} Refreshing inbox… ", app.spinner_char()),
@@ -71,7 +74,10 @@ pub(crate) fn render_footer(frame: &mut Frame, app: &App, area: Rect) {
         Line::from("")
     };
 
-    frame.render_widget(Paragraph::new(Text::from(vec![help_line, status_line])), area);
+    frame.render_widget(
+        Paragraph::new(Text::from(vec![help_line, status_line])),
+        area,
+    );
 }
 
 fn screen_error(app: &App) -> Option<&str> {

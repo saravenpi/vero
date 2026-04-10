@@ -8,11 +8,23 @@ pub struct InboxSnapshot {
     pub unseen_count: usize,
 }
 
-pub async fn load_inbox(account: &Account, filter: InboxFilter) -> Result<InboxSnapshot> {
-    let (emails, unseen_count) = tokio::try_join!(
-        crate::email::fetch_emails(&account.imap, filter),
-        crate::email::fetch_unseen_count(&account.imap)
-    )?;
+impl InboxSnapshot {
+    pub fn filtered_emails(&self, filter: InboxFilter) -> Vec<Email> {
+        self.emails
+            .iter()
+            .filter(|email| match filter {
+                InboxFilter::Unseen => !email.is_seen,
+                InboxFilter::Seen => email.is_seen,
+                InboxFilter::All => true,
+            })
+            .cloned()
+            .collect()
+    }
+}
+
+pub async fn load_inbox(account: &Account) -> Result<InboxSnapshot> {
+    let emails = crate::email::fetch_emails(&account.imap, InboxFilter::All).await?;
+    let unseen_count = emails.iter().filter(|email| !email.is_seen).count();
 
     let _ = crate::storage::save_cached_inbox_emails(&account.email, &emails);
 
@@ -22,15 +34,9 @@ pub async fn load_inbox(account: &Account, filter: InboxFilter) -> Result<InboxS
     })
 }
 
-pub fn load_cached_inbox(account: &Account, filter: InboxFilter) -> Result<InboxSnapshot> {
-    let mut emails = crate::storage::load_cached_inbox_emails(&account.email)?;
+pub fn load_cached_inbox(account: &Account) -> Result<InboxSnapshot> {
+    let emails = crate::storage::load_cached_inbox_emails(&account.email)?;
     let unseen_count = emails.iter().filter(|email| !email.is_seen).count();
-
-    emails.retain(|email| match filter {
-        InboxFilter::Unseen => !email.is_seen,
-        InboxFilter::Seen => email.is_seen,
-        InboxFilter::All => true,
-    });
 
     Ok(InboxSnapshot {
         emails,

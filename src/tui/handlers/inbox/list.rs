@@ -42,16 +42,12 @@ async fn open_selected_email(app: &mut App) -> Result<()> {
     app.inbox_open_loading = true;
 
     let email = app.inbox_emails[app.inbox_selected].clone();
-    let was_unseen = !email.is_seen;
     let result = services::read_loaded_inbox_email(&account, email).await;
 
     app.inbox_open_loading = false;
 
     let email = result?;
-    app.inbox_emails[app.inbox_selected] = email;
-    if was_unseen {
-        app.inbox_unseen_count = app.inbox_unseen_count.saturating_sub(1);
-    }
+    app.update_inbox_email(email);
     app.inbox_scroll_offset = 0;
     app.inbox_view_mode = ViewMode::Detail;
     app.needs_full_redraw = true;
@@ -72,19 +68,14 @@ async fn delete_selected_email(app: &mut App) -> Result<()> {
     let email = app.inbox_emails[app.inbox_selected].clone();
     services::delete_loaded_inbox_email(&account, &email).await?;
 
-    app.inbox_emails.remove(app.inbox_selected);
-    app.clamp_inbox_selection();
+    app.remove_inbox_email(email.uid);
     app.set_status("Email deleted.");
 
     Ok(())
 }
 
 fn set_filter(app: &mut App, filter: InboxFilter) {
-    app.inbox_filter = filter;
-    app.inbox_selected = 0;
-    app.inbox_list_offset = 0;
-    app.needs_inbox_cache_load = true;
-    refresh(app);
+    app.set_inbox_filter(filter);
 }
 
 fn cycle_filter_next(app: &mut App) {

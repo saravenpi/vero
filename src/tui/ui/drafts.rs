@@ -9,11 +9,7 @@ use std::path::Path;
 
 use crate::tui::App;
 
-use super::{
-    list,
-    theme::PRIMARY_COLOR,
-    utils::truncate_with_ellipsis,
-};
+use super::{list, theme::PRIMARY_COLOR, utils::truncate_with_ellipsis};
 
 pub(crate) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     let inner = Layout::default()

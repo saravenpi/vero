@@ -19,12 +19,9 @@ pub(super) async fn execute(
     match command {
         InboxCommand::List { filter, limit } => {
             let filter = filter.unwrap_or_else(|| InboxFilter::from_str(&config.inbox_view));
-            let snapshot = services::load_inbox(&account, filter).await?;
-            let crate::services::InboxSnapshot {
-                emails,
-                unseen_count,
-            } = snapshot;
-            let emails = apply_limit(emails, limit);
+            let snapshot = services::load_inbox(&account).await?;
+            let unseen_count = snapshot.unseen_count;
+            let emails = apply_limit(snapshot.filtered_emails(filter), limit);
             output::print_inbox_list(output, filter, unseen_count, &emails)
         }
         InboxCommand::Show { uid } => {
