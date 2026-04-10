@@ -52,6 +52,11 @@ pub(crate) fn render_footer(frame: &mut Frame, app: &App, area: Rect) {
             format!(" {} ", msg),
             Style::default().fg(SUCCESS_COLOR),
         ))
+    } else if app.inbox_open_loading {
+        Line::from(Span::styled(
+            format!(" {} Loading email… ", app.spinner_char()),
+            Style::default().add_modifier(Modifier::DIM),
+        ))
     } else if app.inbox_loading {
         Line::from(Span::styled(
             format!(" {} Refreshing inbox… ", app.spinner_char()),

@@ -24,7 +24,7 @@ pub async fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
     }
 
     match key.code {
-        KeyCode::Esc => app.navigate_to(Screen::Inbox),
+        KeyCode::Esc => app.navigate_to(Screen::AccountSelection),
         KeyCode::Down | KeyCode::Char('j') => app.select_next(),
         KeyCode::Up | KeyCode::Char('k') => app.select_previous(),
         KeyCode::Enter => {

@@ -85,6 +85,8 @@ pub struct App {
 
     pub needs_inbox_cache_load: bool,
     pub needs_inbox_load: bool,
+    pub cancel_inbox_load: bool,
+    pub inbox_open_loading: bool,
     pub needs_sent_load: bool,
     pub needs_editor_open: bool,
     pub needs_full_redraw: bool,

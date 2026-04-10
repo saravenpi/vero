@@ -60,6 +60,12 @@ async fn run_app<B: ratatui::backend::Backend>(
         maybe_load_cached_inbox(&mut app);
         terminal.draw(|frame| render(frame, &mut app))?;
 
+        if app.cancel_inbox_load {
+            app.cancel_inbox_load = false;
+            if let Some(task) = inbox_load_task.take() {
+                task.abort();
+            }
+        }
         maybe_spawn_inbox_load(&mut app, &mut inbox_load_task);
         maybe_spawn_sent_load(&mut app, &mut sent_load_task);
         handle_drafts_load(&mut app);

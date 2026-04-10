@@ -35,7 +35,7 @@ pub async fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
                 }
             }
         }
-        KeyCode::Esc => app.navigate_to(Screen::Inbox),
+        KeyCode::Esc => app.navigate_to(Screen::AccountSelection),
         KeyCode::Tab => app.tab_next_screen(),
         KeyCode::BackTab => app.tab_prev_screen(),
         _ => {}

@@ -58,6 +58,8 @@ impl App {
             auto_refresh_counter: 0,
             needs_inbox_cache_load: should_load_inbox,
             needs_inbox_load: should_load_inbox,
+            cancel_inbox_load: false,
+            inbox_open_loading: false,
             needs_sent_load: false,
             needs_editor_open: false,
             needs_full_redraw: false,

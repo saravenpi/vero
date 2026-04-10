@@ -109,6 +109,6 @@ fn format_email(email: &Email) -> String {
         },
         email.subject,
         email.date,
-        email.body
+        email.body.replace("\r\n", "\n").replace('\r', "\n")
     )
 }

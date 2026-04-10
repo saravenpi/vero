@@ -6,9 +6,7 @@ use crate::tui::App;
 pub(crate) fn handle_menu_focus(app: &mut App, key: KeyEvent) {
     match key.code {
         KeyCode::Esc => {
-            if app.config.accounts.len() > 1 {
-                app.navigate_to(Screen::AccountSelection);
-            }
+            app.navigate_to(Screen::AccountSelection);
         }
         KeyCode::Down | KeyCode::Char('j') => app.menu_next(),
         KeyCode::Up | KeyCode::Char('k') => app.menu_previous(),

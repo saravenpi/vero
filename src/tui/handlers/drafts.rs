@@ -36,7 +36,7 @@ pub async fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
         KeyCode::Char('r') => {
             app.needs_drafts_load = true;
         }
-        KeyCode::Esc => app.navigate_to(Screen::Inbox),
+        KeyCode::Esc => app.navigate_to(Screen::AccountSelection),
         KeyCode::Tab => app.tab_next_screen(),
         KeyCode::BackTab => app.tab_prev_screen(),
         KeyCode::Down | KeyCode::Char('j') => app.select_next(),

@@ -8,7 +8,7 @@ use crate::tui::App;
 
 pub(super) async fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
     match key.code {
-        KeyCode::Esc => app.navigate_to(Screen::Inbox),
+        KeyCode::Esc => app.navigate_to(Screen::AccountSelection),
         KeyCode::Down | KeyCode::Char('j') => app.select_next(),
         KeyCode::Up | KeyCode::Char('k') => app.select_previous(),
         KeyCode::Enter => open_selected_email(app).await?,
@@ -37,10 +37,17 @@ async fn open_selected_email(app: &mut App) -> Result<()> {
         return Ok(());
     };
 
+    app.cancel_inbox_load = true;
+    app.inbox_loading = false;
+    app.inbox_open_loading = true;
+
     let email = app.inbox_emails[app.inbox_selected].clone();
     let was_unseen = !email.is_seen;
-    let email = services::read_loaded_inbox_email(&account, email).await?;
+    let result = services::read_loaded_inbox_email(&account, email).await;
 
+    app.inbox_open_loading = false;
+
+    let email = result?;
     app.inbox_emails[app.inbox_selected] = email;
     if was_unseen {
         app.inbox_unseen_count = app.inbox_unseen_count.saturating_sub(1);

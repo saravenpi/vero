@@ -1,6 +1,6 @@
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{List, ListItem, Paragraph},
     Frame,
@@ -35,7 +35,7 @@ pub(crate) fn render(frame: &mut Frame, app: &App, area: Rect) {
     let inner = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(6),
+            Constraint::Length(5),
             Constraint::Length(list_height as u16),
             Constraint::Min(0),
         ])
@@ -48,10 +48,6 @@ pub(crate) fn render(frame: &mut Frame, app: &App, area: Rect) {
             Style::default()
                 .fg(PRIMARY_COLOR)
                 .add_modifier(Modifier::BOLD),
-        )),
-        Line::from(Span::styled(
-            "Terminal Email Client",
-            Style::default().fg(Color::Reset),
         )),
         Line::from(""),
         Line::from(Span::styled(
