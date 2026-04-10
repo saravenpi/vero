@@ -39,6 +39,10 @@ pub enum InboxCommand {
     Delete {
         uid: u32,
     },
+    Download {
+        uid: u32,
+        index: Option<usize>,
+    },
     UnreadCount,
 }
 

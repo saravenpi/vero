@@ -15,7 +15,10 @@ pub(crate) fn render_footer(frame: &mut Frame, app: &App, area: Rect) {
         Screen::AccountSelection => "↑/↓: Navigate  Enter: Select",
         Screen::Inbox => match app.inbox_view_mode {
             ViewMode::List => "n: New  d: Delete  r: Refresh  Tab: Switch",
-            ViewMode::Detail => "e: Editor  Esc: Back  Tab: Switch",
+            ViewMode::Detail if app.inbox_show_attachments => {
+                "j/k: Navigate  Enter: Download  a: All  Esc: Back"
+            }
+            ViewMode::Detail => "d: Attachments  e: Editor  Esc: Back  Tab: Switch",
         },
         Screen::Drafts => "n: New  Enter: Resume  d: Delete  r: Refresh  Tab: Switch",
         Screen::Sent => match app.sent_view_mode {
@@ -54,6 +57,11 @@ pub(crate) fn render_footer(frame: &mut Frame, app: &App, area: Rect) {
         Line::from(Span::styled(
             format!(" {} Loading email… ", app.spinner_char()),
             Style::default().add_modifier(Modifier::DIM),
+        ))
+    } else if app.is_downloading_attachment {
+        Line::from(Span::styled(
+            format!(" {} Downloading… ", app.spinner_char()),
+            Style::default().fg(SUCCESS_COLOR),
         ))
     } else if app.is_sending_email {
         Line::from(Span::styled(

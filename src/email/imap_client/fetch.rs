@@ -5,7 +5,7 @@ use mailparse::parse_mail;
 use crate::config::ImapConfig;
 use crate::models::{Attachment, Email, InboxFilter};
 
-use super::body::extract_body_and_attachments;
+use super::body::{extract_attachments_with_bytes, extract_body_and_attachments};
 use super::envelope::parse_envelope;
 use super::session::login;
 use super::{COMMAND_TIMEOUT, FETCH_TIMEOUT};
@@ -77,6 +77,28 @@ pub async fn fetch_email_body(cfg: &ImapConfig, uid: u32) -> Result<(String, Vec
     session.logout().await?;
 
     Ok((body, attachments))
+}
+
+pub async fn fetch_attachment_bytes(
+    cfg: &ImapConfig,
+    uid: u32,
+) -> Result<Vec<(Attachment, Vec<u8>)>> {
+    let mut session = login(cfg).await?;
+
+    session.select("INBOX").await?;
+
+    let mut messages = session.uid_fetch(uid.to_string(), "BODY[]").await?;
+
+    let fetch = messages.next().await.context("No message found")??;
+    let body_data = fetch.body().context("No body found")?;
+    let parsed = parse_mail(body_data).context("Failed to parse email")?;
+
+    let attachments = extract_attachments_with_bytes(&parsed)?;
+
+    drop(messages);
+    session.logout().await?;
+
+    Ok(attachments)
 }
 
 pub async fn fetch_unseen_count(cfg: &ImapConfig) -> Result<usize> {

@@ -32,6 +32,15 @@ pub(super) async fn execute(
             services::delete_inbox_email(&account, uid).await?;
             output::print_deleted(output, uid)
         }
+        InboxCommand::Download { uid, index } => {
+            let folder = config
+                .download_folder
+                .as_deref()
+                .unwrap_or("~/Downloads");
+            let paths =
+                services::download_inbox_attachments(&account, uid, index, folder).await?;
+            output::print_download_result(output, &paths)
+        }
         InboxCommand::UnreadCount => {
             let count = services::unread_count(&account).await?;
             output::print_unread_count(output, count)

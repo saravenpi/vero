@@ -24,6 +24,25 @@ pub(in crate::cli::parser) fn parse_inbox(args: &mut ArgCursor) -> Result<InboxC
             ensure_no_args(args)?;
             Ok(InboxCommand::Delete { uid })
         }
+        Some("download") => {
+            args.next();
+            let uid = parse_u32(&args.value("download")?, "uid")?;
+            let mut index = None;
+            while let Some(arg) = args.next() {
+                match arg.as_str() {
+                    "--index" => {
+                        let raw = args.value("--index")?;
+                        let n = parse_usize(&raw, "index")?;
+                        if n == 0 {
+                            return Err(anyhow!("--index is 1-based, must be >= 1"));
+                        }
+                        index = Some(n - 1);
+                    }
+                    other => return Err(anyhow!("Unknown download option '{}'", other)),
+                }
+            }
+            Ok(InboxCommand::Download { uid, index })
+        }
         Some("unread-count") | Some("count") => {
             args.next();
             ensure_no_args(args)?;

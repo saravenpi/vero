@@ -17,13 +17,25 @@ use super::{
 
 pub(crate) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     match app.screen {
-        Screen::Inbox => render_email_detail(
-            frame,
-            area,
-            &mut app.inbox_scroll_offset,
-            &app.inbox_emails,
-            app.inbox_selected,
-        ),
+        Screen::Inbox => {
+            if app.inbox_show_attachments {
+                render_attachment_list(
+                    frame,
+                    area,
+                    &app.inbox_emails,
+                    app.inbox_selected,
+                    app.inbox_attachment_selected,
+                );
+            } else {
+                render_email_detail(
+                    frame,
+                    area,
+                    &mut app.inbox_scroll_offset,
+                    &app.inbox_emails,
+                    app.inbox_selected,
+                );
+            }
+        }
         Screen::Sent => render_email_detail(
             frame,
             area,
@@ -32,6 +44,101 @@ pub(crate) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             app.sent_selected,
         ),
         _ => {}
+    }
+}
+
+fn render_attachment_list(
+    frame: &mut Frame,
+    area: Rect,
+    emails: &[Email],
+    selected: usize,
+    attachment_selected: usize,
+) {
+    if selected >= emails.len() {
+        return;
+    }
+
+    let email = &emails[selected];
+
+    let sections = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(6),
+            Constraint::Length(1),
+            Constraint::Min(0),
+        ])
+        .margin(1)
+        .split(area);
+
+    let (subject_text, has_empty_subject) = display_subject(email.subject.as_str());
+    let header_style = if has_empty_subject {
+        Style::default().add_modifier(Modifier::DIM)
+    } else {
+        Style::default().fg(PRIMARY_COLOR)
+    };
+    let unknown = String::from("Unknown");
+    let to = email.to.as_ref().unwrap_or(&unknown);
+    let header_text = vec![
+        Line::from(Span::styled(format!("{} ", subject_text), header_style)),
+        Line::from(vec![
+            Span::styled("From: ", Style::default().add_modifier(Modifier::DIM)),
+            Span::styled(&email.from, Style::default()),
+        ]),
+        Line::from(vec![
+            Span::styled("To: ", Style::default().add_modifier(Modifier::DIM)),
+            Span::styled(to, Style::default()),
+        ]),
+        Line::from(vec![
+            Span::styled("Date: ", Style::default().add_modifier(Modifier::DIM)),
+            Span::styled(&email.date, Style::default()),
+        ]),
+    ];
+
+    frame.render_widget(Paragraph::new(header_text), sections[0]);
+
+    let label = if email.attachments.is_empty() {
+        "No attachments".to_string()
+    } else {
+        format!(
+            "Attachments ({})  j/k: Navigate  Enter: Download  a: All  Esc: Back",
+            email.attachments.len()
+        )
+    };
+    frame.render_widget(
+        Paragraph::new(label).style(Style::default().add_modifier(Modifier::DIM)),
+        sections[1],
+    );
+
+    let mut lines = Vec::new();
+    for (i, attachment) in email.attachments.iter().enumerate() {
+        let is_selected = i == attachment_selected;
+        let marker = if is_selected { ">" } else { " " };
+        let size_str = format_size(attachment.size);
+        let line_str = format!(
+            " {} {}  {}  {}",
+            marker, attachment.filename, attachment.content_type, size_str
+        );
+        let style = if is_selected {
+            Style::default().fg(PRIMARY_COLOR)
+        } else {
+            Style::default()
+        };
+        lines.push(Line::from(Span::styled(line_str, style)));
+    }
+
+    frame.render_widget(Paragraph::new(lines), sections[2]);
+}
+
+fn format_size(bytes: i64) -> String {
+    if bytes <= 0 {
+        return String::new();
+    }
+    if bytes >= 1_048_576 {
+        format!("{:.1} MB", bytes as f64 / 1_048_576.0)
+    } else if bytes >= 1_024 {
+        format!("{:.1} KB", bytes as f64 / 1_024.0)
+    } else {
+        format!("{} B", bytes)
     }
 }
 

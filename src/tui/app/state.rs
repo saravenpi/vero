@@ -68,6 +68,11 @@ impl App {
             needs_email_send: false,
             is_sending_email: false,
             pre_compose_screen: None,
+            inbox_show_attachments: false,
+            inbox_attachment_selected: 0,
+            needs_attachment_download: false,
+            is_downloading_attachment: false,
+            attachment_download_index: None,
             spinner_state: 0,
             pending_list_navigation: None,
         }

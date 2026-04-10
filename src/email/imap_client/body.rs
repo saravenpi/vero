@@ -52,6 +52,47 @@ impl ExtractedBodies {
     }
 }
 
+pub(super) fn extract_attachments_with_bytes(
+    mail: &mailparse::ParsedMail,
+) -> Result<Vec<(Attachment, Vec<u8>)>> {
+    let mut result = Vec::new();
+    collect_attachment_bytes(mail, &mut result)?;
+    Ok(result)
+}
+
+fn collect_attachment_bytes(
+    mail: &mailparse::ParsedMail,
+    result: &mut Vec<(Attachment, Vec<u8>)>,
+) -> Result<()> {
+    let ctype = mail.ctype.mimetype.to_ascii_lowercase();
+    let content_disposition = mail.headers.get_first_value("Content-Disposition");
+
+    if is_attachment(content_disposition.as_deref()) {
+        let filename = content_disposition
+            .as_deref()
+            .and_then(extract_filename)
+            .unwrap_or_else(|| "unknown".to_string());
+        let bytes = mail.get_body_raw()?;
+        let size = bytes.len() as i64;
+        result.push((
+            Attachment {
+                filename,
+                content_type: ctype,
+                size,
+                file_path: None,
+            },
+            bytes,
+        ));
+        return Ok(());
+    }
+
+    for subpart in &mail.subparts {
+        collect_attachment_bytes(subpart, result)?;
+    }
+
+    Ok(())
+}
+
 pub(super) fn extract_body_and_attachments(
     mail: &mailparse::ParsedMail,
 ) -> Result<(String, Vec<Attachment>)> {

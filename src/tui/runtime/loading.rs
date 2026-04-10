@@ -1,9 +1,13 @@
+mod attachments;
 mod compose;
 mod drafts;
 mod inbox;
 mod sent;
 mod signatures;
 
+pub(super) use attachments::{
+    handle_attachment_download_result, maybe_spawn_attachment_download, AttachmentDownloadTask,
+};
 pub(super) use compose::{handle_send_result, maybe_spawn_send, ComposeSendTask};
 pub(super) use drafts::handle_drafts_load;
 pub(super) use inbox::{

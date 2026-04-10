@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::models::{Attachment, Email, InboxFilter};
 use crate::services::AccountSummary;
@@ -46,6 +46,15 @@ pub(super) fn print_email(email: &Email, index: Option<usize>) {
     print_attachments(&email.attachments);
     println!();
     println!("{}", email.body);
+}
+
+pub(super) fn print_download_result(paths: &[PathBuf]) {
+    for path in paths {
+        println!("saved {}", path.display());
+    }
+    if paths.is_empty() {
+        println!("no attachments downloaded");
+    }
 }
 
 pub(super) fn print_unread_count(unread_count: usize) {

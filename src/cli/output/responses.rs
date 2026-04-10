@@ -1,6 +1,6 @@
 use anyhow::Result;
 use serde::Serialize;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::models::{Email, InboxFilter};
 use crate::services::AccountSummary;
@@ -23,6 +23,14 @@ pub(super) fn print_inbox_list(
 
 pub(super) fn print_email(email: &Email, index: Option<usize>) -> Result<()> {
     print_json(&EmailResponse { index, email })
+}
+
+pub(super) fn print_download_result(paths: &[PathBuf]) -> Result<()> {
+    let saved: Vec<_> = paths
+        .iter()
+        .map(|p| p.display().to_string())
+        .collect();
+    print_json(&DownloadResponse { saved })
 }
 
 pub(super) fn print_unread_count(unread_count: usize) -> Result<()> {
@@ -87,6 +95,11 @@ struct UnreadCountResponse {
 #[derive(Serialize)]
 struct DeleteResponse {
     deleted_uid: u32,
+}
+
+#[derive(Serialize)]
+struct DownloadResponse {
+    saved: Vec<String>,
 }
 
 #[derive(Serialize)]

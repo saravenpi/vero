@@ -53,6 +53,16 @@ pub fn print_unread_count(output: OutputFormat, unread_count: usize) -> Result<(
     }
 }
 
+pub fn print_download_result(output: OutputFormat, paths: &[std::path::PathBuf]) -> Result<()> {
+    match output {
+        OutputFormat::Text => {
+            text::print_download_result(paths);
+            Ok(())
+        }
+        OutputFormat::Json => responses::print_download_result(paths),
+    }
+}
+
 pub fn print_deleted(output: OutputFormat, uid: u32) -> Result<()> {
     match output {
         OutputFormat::Text => {

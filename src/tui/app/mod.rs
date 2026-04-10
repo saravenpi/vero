@@ -97,6 +97,12 @@ pub struct App {
     pub is_sending_email: bool,
     pub pre_compose_screen: Option<Screen>,
 
+    pub inbox_show_attachments: bool,
+    pub inbox_attachment_selected: usize,
+    pub needs_attachment_download: bool,
+    pub is_downloading_attachment: bool,
+    pub attachment_download_index: Option<usize>,
+
     pub spinner_state: usize,
 
     pending_list_navigation: Option<PendingListNavigation>,
