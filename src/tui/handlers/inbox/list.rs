@@ -80,18 +80,18 @@ fn set_filter(app: &mut App, filter: InboxFilter) {
 
 fn cycle_filter_next(app: &mut App) {
     let filter = match app.inbox_filter {
+        InboxFilter::All => InboxFilter::Unseen,
         InboxFilter::Unseen => InboxFilter::Seen,
         InboxFilter::Seen => InboxFilter::All,
-        InboxFilter::All => InboxFilter::Unseen,
     };
     set_filter(app, filter);
 }
 
 fn cycle_filter_prev(app: &mut App) {
     let filter = match app.inbox_filter {
+        InboxFilter::All => InboxFilter::Seen,
         InboxFilter::Unseen => InboxFilter::All,
         InboxFilter::Seen => InboxFilter::Unseen,
-        InboxFilter::All => InboxFilter::Seen,
     };
     set_filter(app, filter);
 }

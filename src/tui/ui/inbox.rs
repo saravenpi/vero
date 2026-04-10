@@ -25,11 +25,11 @@ pub(crate) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         .split(area);
 
     let tab_index = match app.inbox_filter {
-        InboxFilter::Unseen => 0,
-        InboxFilter::Seen => 1,
-        InboxFilter::All => 2,
+        InboxFilter::All => 0,
+        InboxFilter::Unseen => 1,
+        InboxFilter::Seen => 2,
     };
-    let tabs = Tabs::new(vec!["  Unseen  ", "  Seen  ", "  All  "])
+    let tabs = Tabs::new(vec!["  All  ", "  Unseen  ", "  Seen  "])
         .select(tab_index)
         .style(Style::default().add_modifier(Modifier::DIM))
         .highlight_style(
