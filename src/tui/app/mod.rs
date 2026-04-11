@@ -103,6 +103,9 @@ pub struct App {
     pub is_downloading_attachment: bool,
     pub attachment_download_index: Option<usize>,
 
+    pub needs_inbox_open: bool,
+    pub inbox_open_pending_email: Option<Email>,
+
     pub spinner_state: usize,
 
     pending_list_navigation: Option<PendingListNavigation>,

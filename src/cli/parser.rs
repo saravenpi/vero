@@ -4,7 +4,7 @@ mod commands;
 #[cfg(test)]
 mod tests;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 
 pub(in crate::cli::parser) use args::{ensure_no_args, parse_u32, parse_usize, ArgCursor};
 use commands::{parse_accounts, parse_draft, parse_inbox, parse_send, parse_sent};
@@ -20,48 +20,41 @@ pub fn parse(raw_args: Vec<String>) -> Result<CliInvocation> {
         });
     }
 
-    let mut args = ArgCursor::new(raw_args);
-    let mut output = OutputFormat::Text;
-    let mut account = None;
-
-    loop {
-        match args.peek() {
-            Some("--json") => {
-                args.next();
-                output = OutputFormat::Json;
-            }
-            Some("--account") | Some("-a") => {
-                let flag = args.next().context("Missing account flag")?;
-                account = Some(args.value(&flag)?);
-            }
-            Some("help") | Some("-h") | Some("--help") => {
-                args.next();
-                return ensure_empty(
-                    CliInvocation {
-                        output,
-                        account,
-                        command: CliCommand::Help,
-                    },
-                    &args,
-                );
-            }
-            Some("version") | Some("-v") | Some("--version") => {
-                args.next();
-                return ensure_empty(
-                    CliInvocation {
-                        output,
-                        account,
-                        command: CliCommand::Version,
-                    },
-                    &args,
-                );
-            }
-            _ => break,
-        }
-    }
+    let (output, account, positional) = extract_global_flags(raw_args)?;
+    let mut args = ArgCursor::new(positional);
 
     if args.is_empty() {
-        return Err(anyhow!("Missing command"));
+        return Ok(CliInvocation {
+            output,
+            account,
+            command: CliCommand::Tui,
+        });
+    }
+
+    match args.peek() {
+        Some("help") | Some("-h") | Some("--help") => {
+            args.next();
+            return ensure_empty(
+                CliInvocation {
+                    output,
+                    account,
+                    command: CliCommand::Help,
+                },
+                &args,
+            );
+        }
+        Some("version") | Some("-v") | Some("--version") => {
+            args.next();
+            return ensure_empty(
+                CliInvocation {
+                    output,
+                    account,
+                    command: CliCommand::Version,
+                },
+                &args,
+            );
+        }
+        _ => {}
     }
 
     let command = match args.next().as_deref() {
@@ -91,4 +84,32 @@ pub fn parse(raw_args: Vec<String>) -> Result<CliInvocation> {
 fn ensure_empty(invocation: CliInvocation, args: &ArgCursor) -> Result<CliInvocation> {
     ensure_no_args(args)?;
     Ok(invocation)
+}
+
+fn extract_global_flags(
+    raw_args: Vec<String>,
+) -> Result<(OutputFormat, Option<String>, Vec<String>)> {
+    let mut output = OutputFormat::Text;
+    let mut account = None;
+    let mut positional = Vec::new();
+    let mut iter = raw_args.into_iter();
+
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "--json" => {
+                output = OutputFormat::Json;
+            }
+            "--account" | "-a" => {
+                let value = iter
+                    .next()
+                    .ok_or_else(|| anyhow!("Missing value for {}", arg))?;
+                account = Some(value);
+            }
+            _ => {
+                positional.push(arg);
+            }
+        }
+    }
+
+    Ok((output, account, positional))
 }

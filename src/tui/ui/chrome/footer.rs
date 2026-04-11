@@ -65,7 +65,7 @@ pub(crate) fn render_footer(frame: &mut Frame, app: &App, area: Rect) {
         ))
     } else if app.inbox_open_loading {
         Line::from(Span::styled(
-            format!(" {} Loading email… ", app.spinner_char()),
+            format!(" {} Opening email… ", app.spinner_char()),
             Style::default().add_modifier(Modifier::DIM),
         ))
     } else if app.is_downloading_attachment {

@@ -64,6 +64,20 @@ fn parses_send_fields() {
 }
 
 #[test]
+fn account_flag_is_accepted_after_subcommand() {
+    let cli = parse(vec![
+        "inbox".to_string(),
+        "unread-count".to_string(),
+        "--account".to_string(),
+        "user@example.com".to_string(),
+    ])
+    .unwrap();
+
+    assert_eq!(cli.account.as_deref(), Some("user@example.com"));
+    assert!(matches!(cli.command, CliCommand::Inbox(InboxCommand::UnreadCount)));
+}
+
+#[test]
 fn rejects_mixed_send_sources() {
     let error = parse(vec![
         "send".to_string(),

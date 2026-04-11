@@ -17,9 +17,10 @@ use crate::tui::{handlers, is_quit_key, render, App, AppEvent, EventHandler};
 use editor::handle_editor_open;
 use loading::{
     handle_attachment_download_result, handle_drafts_load, handle_inbox_load_result,
-    handle_send_result, handle_sent_load_result, handle_signature_load, maybe_load_cached_inbox,
-    maybe_spawn_attachment_download, maybe_spawn_inbox_load, maybe_spawn_send,
-    maybe_spawn_sent_load, AttachmentDownloadTask, ComposeSendTask, InboxLoadTask, SentLoadTask,
+    handle_inbox_open_result, handle_send_result, handle_sent_load_result, handle_signature_load,
+    maybe_load_cached_inbox, maybe_spawn_attachment_download, maybe_spawn_inbox_load,
+    maybe_spawn_inbox_open, maybe_spawn_send, maybe_spawn_sent_load, AttachmentDownloadTask,
+    ComposeSendTask, InboxLoadTask, InboxOpenTask, SentLoadTask,
 };
 
 pub async fn run(config: VeroConfig) -> Result<()> {
@@ -50,6 +51,7 @@ async fn run_app<B: ratatui::backend::Backend>(
     let mut app = App::new(config);
     let mut events = EventHandler::new(Duration::from_millis(100));
     let mut inbox_load_task: Option<InboxLoadTask> = None;
+    let mut inbox_open_task: Option<InboxOpenTask> = None;
     let mut sent_load_task: Option<SentLoadTask> = None;
     let mut compose_send_task: Option<ComposeSendTask> = None;
     let mut attachment_download_task: Option<AttachmentDownloadTask> = None;
@@ -70,6 +72,7 @@ async fn run_app<B: ratatui::backend::Backend>(
             }
         }
         maybe_spawn_inbox_load(&mut app, &mut inbox_load_task);
+        maybe_spawn_inbox_open(&mut app, &mut inbox_open_task);
         maybe_spawn_sent_load(&mut app, &mut sent_load_task);
         maybe_spawn_send(&mut app, &mut compose_send_task);
         maybe_spawn_attachment_download(&mut app, &mut attachment_download_task);
@@ -77,6 +80,7 @@ async fn run_app<B: ratatui::backend::Backend>(
         handle_signature_load(&mut app);
         handle_editor_open(&mut app)?;
         handle_inbox_load_result(&mut app, &mut inbox_load_task).await?;
+        handle_inbox_open_result(&mut app, &mut inbox_open_task).await?;
         handle_sent_load_result(&mut app, &mut sent_load_task).await?;
         handle_send_result(&mut app, &mut compose_send_task).await?;
         handle_attachment_download_result(&mut app, &mut attachment_download_task).await?;

@@ -73,6 +73,8 @@ impl App {
             needs_attachment_download: false,
             is_downloading_attachment: false,
             attachment_download_index: None,
+            needs_inbox_open: false,
+            inbox_open_pending_email: None,
             spinner_state: 0,
             pending_list_navigation: None,
         }

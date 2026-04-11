@@ -1,7 +1,7 @@
 use anyhow::Result;
 use crossterm::event::{KeyCode, KeyEvent};
 
-use crate::models::{InboxFilter, ViewMode};
+use crate::models::InboxFilter;
 use crate::services;
 use crate::tui::app::Screen;
 use crate::tui::App;
@@ -11,7 +11,7 @@ pub(super) async fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
         KeyCode::Esc => app.navigate_to(Screen::AccountSelection),
         KeyCode::Down | KeyCode::Char('j') => app.select_next(),
         KeyCode::Up | KeyCode::Char('k') => app.select_previous(),
-        KeyCode::Enter => open_selected_email(app).await?,
+        KeyCode::Enter => open_selected_email(app),
         KeyCode::Char('d') => delete_selected_email(app).await?,
         KeyCode::Char('u') => set_filter(app, InboxFilter::Unseen),
         KeyCode::Char('s') => set_filter(app, InboxFilter::Seen),
@@ -27,32 +27,22 @@ pub(super) async fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
     Ok(())
 }
 
-async fn open_selected_email(app: &mut App) -> Result<()> {
+fn open_selected_email(app: &mut App) {
     if app.inbox_selected >= app.inbox_emails.len() {
-        return Ok(());
+        return;
     }
 
-    let Some(account) = app.current_account.clone() else {
+    if app.current_account.is_none() {
         app.set_error("No account selected");
-        return Ok(());
-    };
+        return;
+    }
 
+    let email = app.inbox_emails[app.inbox_selected].clone();
     app.cancel_inbox_load = true;
     app.inbox_loading = false;
     app.inbox_open_loading = true;
-
-    let email = app.inbox_emails[app.inbox_selected].clone();
-    let result = services::read_loaded_inbox_email(&account, email).await;
-
-    app.inbox_open_loading = false;
-
-    let email = result?;
-    app.update_inbox_email(email);
-    app.inbox_scroll_offset = 0;
-    app.inbox_view_mode = ViewMode::Detail;
-    app.needs_full_redraw = true;
-
-    Ok(())
+    app.inbox_open_pending_email = Some(email);
+    app.needs_inbox_open = true;
 }
 
 async fn delete_selected_email(app: &mut App) -> Result<()> {
