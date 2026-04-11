@@ -92,6 +92,13 @@ fn render_attachment_list(
             Span::styled("Date: ", Style::default().add_modifier(Modifier::DIM)),
             Span::styled(&email.date, Style::default()),
         ]),
+        Line::from(vec![
+            Span::styled("Attachments: ", Style::default().add_modifier(Modifier::DIM)),
+            Span::styled(
+                email.attachments.len().to_string(),
+                Style::default(),
+            ),
+        ]),
     ];
 
     frame.render_widget(Paragraph::new(header_text), sections[0]);
@@ -172,7 +179,7 @@ fn render_email_detail(
     };
     let unknown = String::from("Unknown");
     let to = email.to.as_ref().unwrap_or(&unknown);
-    let header_text = vec![
+    let mut header_text = vec![
         Line::from(Span::styled(format!("{} ", subject_text), header_style)),
         Line::from(vec![
             Span::styled("From: ", Style::default().add_modifier(Modifier::DIM)),
@@ -187,6 +194,16 @@ fn render_email_detail(
             Span::styled(&email.date, Style::default()),
         ]),
     ];
+
+    if !email.attachments.is_empty() {
+        header_text.push(Line::from(vec![
+            Span::styled("Attachments: ", Style::default().add_modifier(Modifier::DIM)),
+            Span::styled(
+                email.attachments.len().to_string(),
+                Style::default(),
+            ),
+        ]));
+    }
 
     frame.render_widget(Paragraph::new(header_text), sections[0]);
 
