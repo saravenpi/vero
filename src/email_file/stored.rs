@@ -120,6 +120,9 @@ pub fn parse_stored_email_file(content: &str) -> Result<Email> {
         attachments,
         uid,
         is_seen,
+        message_id: None,
+        in_reply_to: None,
+        references: Vec::new(),
     })
 }
 

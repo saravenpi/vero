@@ -46,10 +46,14 @@ pub async fn read_inbox_email(account: &Account, uid: u32) -> Result<Email> {
 }
 
 pub async fn read_loaded_inbox_email(account: &Account, mut email: Email) -> Result<Email> {
-    let (body, attachments) = crate::email::fetch_email_body(&account.imap, email.uid).await?;
+    let (body, attachments, references) =
+        crate::email::fetch_email_body(&account.imap, email.uid).await?;
 
     email.body = body;
     email.attachments = attachments;
+    if !references.is_empty() {
+        email.references = references;
+    }
     email.is_seen = true;
 
     crate::storage::save_seen_email(&account.email, email.clone())?;

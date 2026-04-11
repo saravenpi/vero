@@ -45,6 +45,9 @@ pub async fn send_draft(account: &Account, draft: EmailDraft) -> Result<Email> {
         attachments: draft.attachments.clone(),
         uid: 0,
         is_seen: true,
+        message_id: None,
+        in_reply_to: None,
+        references: Vec::new(),
     };
 
     let account_email = account.email.clone();

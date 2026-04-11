@@ -6,6 +6,7 @@ mod detail;
 mod drafts;
 mod inbox;
 mod list;
+pub(super) mod quote;
 mod sent;
 mod signatures;
 mod theme;

@@ -58,7 +58,10 @@ pub async fn fetch_emails(cfg: &ImapConfig, filter: InboxFilter) -> Result<Vec<E
     Ok(emails)
 }
 
-pub async fn fetch_email_body(cfg: &ImapConfig, uid: u32) -> Result<(String, Vec<Attachment>)> {
+pub async fn fetch_email_body(
+    cfg: &ImapConfig,
+    uid: u32,
+) -> Result<(String, Vec<Attachment>, Vec<String>)> {
     let mut session = login(cfg).await?;
 
     session.select("INBOX").await?;
@@ -71,12 +74,32 @@ pub async fn fetch_email_body(cfg: &ImapConfig, uid: u32) -> Result<(String, Vec
 
     let parsed = parse_mail(body_data).context("Failed to parse email")?;
 
+    let references = parse_references_header(&parsed);
+
     let (body, attachments) = extract_body_and_attachments(&parsed)?;
 
     drop(messages);
     session.logout().await?;
 
-    Ok((body, attachments))
+    Ok((body, attachments, references))
+}
+
+fn parse_references_header(mail: &mailparse::ParsedMail) -> Vec<String> {
+    let Some(header) = mail
+        .headers
+        .iter()
+        .find(|h| h.get_key_ref().eq_ignore_ascii_case("references"))
+    else {
+        return Vec::new();
+    };
+
+    let value = header.get_value();
+
+    value
+        .split_whitespace()
+        .filter(|s: &&str| s.starts_with('<') && s.ends_with('>'))
+        .map(|s: &str| s.trim_matches('<').trim_matches('>').to_string())
+        .collect()
 }
 
 pub async fn fetch_attachment_bytes(

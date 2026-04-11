@@ -44,6 +44,20 @@ pub(super) fn parse_envelope(fetch: &Fetch) -> Option<Email> {
 
     let timestamp = parse_email_timestamp(&date).unwrap_or_else(Utc::now);
 
+    let message_id = envelope
+        .message_id
+        .as_ref()
+        .and_then(|b| String::from_utf8(b.to_vec()).ok())
+        .map(|s| s.trim().trim_matches('<').trim_matches('>').to_string())
+        .filter(|s| !s.is_empty());
+
+    let in_reply_to = envelope
+        .in_reply_to
+        .as_ref()
+        .and_then(|b| String::from_utf8(b.to_vec()).ok())
+        .map(|s| s.trim().trim_matches('<').trim_matches('>').to_string())
+        .filter(|s| !s.is_empty());
+
     Some(Email {
         from,
         to,
@@ -56,6 +70,9 @@ pub(super) fn parse_envelope(fetch: &Fetch) -> Option<Email> {
         attachments: Vec::new(),
         uid: fetch.uid.unwrap_or(0),
         is_seen: fetch.flags().any(|flag| flag == Flag::Seen),
+        message_id,
+        in_reply_to,
+        references: Vec::new(),
     })
 }
 

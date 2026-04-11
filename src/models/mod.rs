@@ -29,6 +29,12 @@ pub struct Email {
     pub uid: u32,
     #[serde(default, skip)]
     pub is_seen: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub in_reply_to: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub references: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

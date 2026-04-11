@@ -23,12 +23,19 @@ pub(crate) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
                     area,
                     &mut app.inbox_scroll_offset,
                     email.as_ref(),
+                    app.inbox_collapse_quotes,
                 );
             }
         }
         Screen::Sent => {
             let email = app.selected_sent_email().cloned();
-            body::render_email_detail(frame, area, &mut app.sent_scroll_offset, email.as_ref())
+            body::render_email_detail(
+                frame,
+                area,
+                &mut app.sent_scroll_offset,
+                email.as_ref(),
+                false,
+            )
         }
         _ => {}
     }

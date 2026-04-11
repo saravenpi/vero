@@ -1,14 +1,15 @@
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
+    text::Text,
     widgets::{Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap},
     Frame,
 };
 use unicode_width::UnicodeWidthChar;
 
-use super::{theme::PRIMARY_COLOR, utils::sanitize_email_body};
+use super::theme::PRIMARY_COLOR;
 
-pub(crate) fn render(frame: &mut Frame, area: Rect, scroll_offset: &mut usize, body: &str) {
+pub(crate) fn render<'t>(frame: &mut Frame, area: Rect, scroll_offset: &mut usize, body: Text<'t>) {
     let body_layout = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Min(0), Constraint::Length(1)])
@@ -16,16 +17,15 @@ pub(crate) fn render(frame: &mut Frame, area: Rect, scroll_offset: &mut usize, b
     let body_text_area = body_layout[0];
     let scrollbar_area = body_layout[1];
 
-    let body_text = sanitize_email_body(body);
-    let body_line_count = rendered_body_line_count(body_text.as_str(), body_text_area.width);
+    let body_line_count = rendered_text_line_count(&body, body_text_area.width);
     let viewport_height = body_text_area.height as usize;
     let max_scroll = body_line_count.saturating_sub(viewport_height);
     *scroll_offset = (*scroll_offset).min(max_scroll);
 
-    let body = Paragraph::new(body_text.as_str())
+    let para = Paragraph::new(body)
         .wrap(Wrap { trim: false })
         .scroll(((*scroll_offset).min(u16::MAX as usize) as u16, 0));
-    frame.render_widget(body, body_text_area);
+    frame.render_widget(para, body_text_area);
 
     if scrollbar_area.width == 0 || scrollbar_area.height == 0 {
         return;
@@ -48,14 +48,22 @@ pub(crate) fn render(frame: &mut Frame, area: Rect, scroll_offset: &mut usize, b
     );
 }
 
-fn rendered_body_line_count(body: &str, width: u16) -> usize {
+fn rendered_text_line_count(text: &Text<'_>, width: u16) -> usize {
     let width = width as usize;
     if width == 0 {
         return 0;
     }
 
-    body.split('\n')
-        .map(|line| wrapped_line_count(line, width))
+    text.lines
+        .iter()
+        .map(|line| {
+            let content: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
+            if content.is_empty() {
+                1
+            } else {
+                wrapped_line_count(&content, width)
+            }
+        })
         .sum()
 }
 

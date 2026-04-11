@@ -60,6 +60,10 @@ pub(super) fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
                 }
             }
         }
+        KeyCode::Char('z') => {
+            app.inbox_collapse_quotes = !app.inbox_collapse_quotes;
+            app.inbox_scroll_offset = 0;
+        }
         _ => {}
     }
 

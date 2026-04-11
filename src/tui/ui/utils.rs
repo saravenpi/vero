@@ -47,19 +47,31 @@ pub(crate) fn subject_modifier(base: Modifier, is_seen: bool, has_empty_subject:
 }
 
 pub(crate) fn sanitize_email_body(body: &str) -> String {
-    let mut sanitized = String::with_capacity(body.len());
+    let mut out = String::with_capacity(body.len());
     let mut chars = body.chars().peekable();
 
     while let Some(ch) = chars.next() {
         match ch {
             '\r' if matches!(chars.peek(), Some('\n')) => {}
-            '\r' => sanitized.push('\n'),
-            '\t' => sanitized.push_str("    "),
-            '\n' => sanitized.push('\n'),
+            '\r' => out.push('\n'),
+            '\t' => out.push_str("    "),
+            '\n' => out.push('\n'),
             _ if ch.is_control() => {}
-            _ => sanitized.push(ch),
+            _ => out.push(ch),
         }
     }
 
-    sanitized
+    out
+}
+
+pub(crate) fn sanitize_line(raw: &str) -> String {
+    let mut out = String::with_capacity(raw.len());
+    for ch in raw.trim_end_matches('\r').chars() {
+        match ch {
+            '\t' => out.push_str("    "),
+            _ if ch.is_control() => {}
+            _ => out.push(ch),
+        }
+    }
+    out
 }

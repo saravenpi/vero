@@ -115,4 +115,6 @@ pub struct App {
     pub spinner_state: usize,
 
     pending_list_navigation: Option<PendingListNavigation>,
+
+    pub inbox_collapse_quotes: bool,
 }

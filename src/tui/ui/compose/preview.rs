@@ -84,6 +84,6 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         frame,
         sections[3],
         &mut app.compose_preview_scroll_offset,
-        app.compose_draft.body.as_str(),
+        app.compose_draft.body.as_str().into(),
     );
 }

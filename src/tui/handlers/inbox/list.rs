@@ -88,3 +88,4 @@ fn refresh(app: &mut App) {
     app.needs_inbox_load = true;
     app.inbox_loading = true;
 }
+

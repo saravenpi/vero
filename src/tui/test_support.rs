@@ -46,6 +46,9 @@ pub(crate) fn test_email(uid: u32) -> Email {
         attachments: Vec::new(),
         uid,
         is_seen: false,
+        message_id: None,
+        in_reply_to: None,
+        references: Vec::new(),
     }
 }
 

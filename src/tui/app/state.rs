@@ -81,6 +81,7 @@ impl App {
             inbox_open_pending_email: None,
             spinner_state: 0,
             pending_list_navigation: None,
+            inbox_collapse_quotes: true,
         }
     }
 

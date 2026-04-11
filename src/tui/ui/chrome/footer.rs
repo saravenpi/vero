@@ -98,10 +98,15 @@ fn help_text(app: &App) -> String {
                 let has_attachments = app
                     .selected_inbox_email()
                     .is_some_and(|email| !email.attachments.is_empty());
-                if has_attachments {
-                    "j/k: Scroll  d: Attachments  e: Editor  Esc: Back  Tab: Switch".to_string()
+                let quotes_hint = if app.inbox_collapse_quotes {
+                    "z: Show history"
                 } else {
-                    "j/k: Scroll  e: Editor  Esc: Back  Tab: Switch".to_string()
+                    "z: Hide history"
+                };
+                if has_attachments {
+                    format!("j/k: Scroll  {quotes_hint}  d: Attachments  e: Editor  Esc: Back")
+                } else {
+                    format!("j/k: Scroll  {quotes_hint}  e: Editor  Esc: Back  Tab: Switch")
                 }
             }
         },
