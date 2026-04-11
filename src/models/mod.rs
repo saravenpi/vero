@@ -53,11 +53,27 @@ impl InboxFilter {
         }
     }
 
+    pub fn label(self) -> &'static str {
+        match self {
+            InboxFilter::All => "All",
+            InboxFilter::Unseen => "Unseen",
+            InboxFilter::Seen => "Seen",
+        }
+    }
+
     pub fn from_str(s: &str) -> Self {
         match s {
             "unseen" => InboxFilter::Unseen,
             "seen" => InboxFilter::Seen,
             _ => InboxFilter::All,
+        }
+    }
+
+    pub fn ordered(default: Self) -> [Self; 3] {
+        match default {
+            InboxFilter::All => [InboxFilter::All, InboxFilter::Unseen, InboxFilter::Seen],
+            InboxFilter::Unseen => [InboxFilter::Unseen, InboxFilter::Seen, InboxFilter::All],
+            InboxFilter::Seen => [InboxFilter::Seen, InboxFilter::All, InboxFilter::Unseen],
         }
     }
 

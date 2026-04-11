@@ -4,6 +4,7 @@ use crate::models::{EmailDraft, InboxFilter, ViewMode};
 
 impl App {
     pub fn new(config: VeroConfig) -> Self {
+        let inbox_filter = InboxFilter::from_str(&config.inbox_view);
         let current_account = if config.accounts.len() == 1 {
             Some(config.accounts[0].clone())
         } else {
@@ -16,7 +17,6 @@ impl App {
             Screen::AccountSelection
         };
 
-        let inbox_filter = InboxFilter::All;
         let should_load_inbox = current_account.is_some();
 
         Self {
@@ -94,11 +94,25 @@ mod tests {
     use crate::config::VeroConfig;
 
     #[test]
-    fn app_new_defaults_to_all_filter() {
+    fn app_new_uses_configured_inbox_filter() {
         let config = VeroConfig {
             accounts: Vec::new(),
             download_folder: None,
-            inbox_view: "unseen".to_string(), // Should be overridden to All
+            inbox_view: "unseen".to_string(),
+            auto_refresh: crate::config::AutoRefresh { seconds: 0 },
+            viewer: None,
+            editor: None,
+        };
+        let app = App::new(config);
+        assert_eq!(app.inbox_filter, InboxFilter::Unseen);
+    }
+
+    #[test]
+    fn app_new_defaults_to_all_filter_when_not_configured() {
+        let config = VeroConfig {
+            accounts: Vec::new(),
+            download_folder: None,
+            inbox_view: String::new(),
             auto_refresh: crate::config::AutoRefresh { seconds: 0 },
             viewer: None,
             editor: None,

@@ -45,6 +45,19 @@ fn inbox_title_ignores_refresh_and_error_state() {
 }
 
 #[test]
+fn inbox_tabs_start_with_configured_default_filter() {
+    let mut app = test_app();
+    app.config.inbox_view = "seen".to_string();
+
+    let filters = inbox::tab_filters(&app);
+
+    assert_eq!(
+        filters,
+        [InboxFilter::Seen, InboxFilter::All, InboxFilter::Unseen]
+    );
+}
+
+#[test]
 fn display_subject_uses_muted_placeholder_for_blank_subjects() {
     assert_eq!(display_subject(""), ("No Subject", true));
     assert_eq!(display_subject("   "), ("No Subject", true));

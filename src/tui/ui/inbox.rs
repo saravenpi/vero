@@ -24,20 +24,25 @@ pub(crate) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         .constraints([Constraint::Length(1), Constraint::Min(0)])
         .split(area);
 
-    let tab_index = match app.inbox_filter {
-        InboxFilter::All => 0,
-        InboxFilter::Unseen => 1,
-        InboxFilter::Seen => 2,
-    };
-    let tabs = Tabs::new(vec!["  All  ", "  Unseen  ", "  Seen  "])
-        .select(tab_index)
-        .style(Style::default().add_modifier(Modifier::DIM))
-        .highlight_style(
-            Style::default()
-                .fg(PRIMARY_COLOR)
-                .remove_modifier(Modifier::DIM)
-                .add_modifier(Modifier::BOLD),
-        );
+    let tab_filters = tab_filters(app);
+    let tab_index = tab_filters
+        .iter()
+        .position(|filter| *filter == app.inbox_filter)
+        .unwrap_or(0);
+    let tabs = Tabs::new(
+        tab_filters
+            .iter()
+            .map(|filter| format!("  {}  ", filter.label()))
+            .collect::<Vec<_>>(),
+    )
+    .select(tab_index)
+    .style(Style::default().add_modifier(Modifier::DIM))
+    .highlight_style(
+        Style::default()
+            .fg(PRIMARY_COLOR)
+            .remove_modifier(Modifier::DIM)
+            .add_modifier(Modifier::BOLD),
+    );
     frame.render_widget(tabs, chunks[0]);
 
     let inner = Layout::default()
@@ -96,4 +101,8 @@ fn empty_text(app: &App) -> String {
     }
 
     "No emails found".to_string()
+}
+
+pub(crate) fn tab_filters(app: &App) -> [InboxFilter; 3] {
+    InboxFilter::ordered(InboxFilter::from_str(&app.config.inbox_view))
 }
