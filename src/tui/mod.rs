@@ -1,4 +1,5 @@
 pub mod app;
+mod error_messages;
 mod events;
 mod external;
 mod handlers;

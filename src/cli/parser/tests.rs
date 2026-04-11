@@ -74,7 +74,10 @@ fn account_flag_is_accepted_after_subcommand() {
     .unwrap();
 
     assert_eq!(cli.account.as_deref(), Some("user@example.com"));
-    assert!(matches!(cli.command, CliCommand::Inbox(InboxCommand::UnreadCount)));
+    assert!(matches!(
+        cli.command,
+        CliCommand::Inbox(InboxCommand::UnreadCount)
+    ));
 }
 
 #[test]

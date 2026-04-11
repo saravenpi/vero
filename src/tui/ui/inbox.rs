@@ -11,6 +11,7 @@ use ratatui::{
 use crate::models::{InboxFilter, ViewMode};
 use crate::tui::App;
 
+use super::theme::muted_text_style;
 use super::{detail, list, theme::PRIMARY_COLOR};
 
 pub(crate) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
@@ -59,7 +60,8 @@ pub(crate) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         frame.render_widget(
             Paragraph::new(empty_text(app))
                 .block(block)
-                .alignment(Alignment::Center),
+                .style(muted_text_style())
+                .alignment(Alignment::Left),
             inner[0],
         );
         return;

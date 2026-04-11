@@ -11,7 +11,7 @@ use crate::tui::App;
 
 use super::{
     detail, list,
-    theme::PRIMARY_COLOR,
+    theme::{muted_text_style, PRIMARY_COLOR},
     utils::{display_subject, display_width, subject_modifier, truncate_with_ellipsis},
 };
 
@@ -35,7 +35,8 @@ pub(crate) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         frame.render_widget(
             Paragraph::new(empty_text(app))
                 .block(block)
-                .alignment(Alignment::Center),
+                .style(muted_text_style())
+                .alignment(Alignment::Left),
             inner[0],
         );
         return;

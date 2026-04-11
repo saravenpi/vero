@@ -81,6 +81,7 @@ pub struct App {
     pub compose_step: ComposeStep,
     pub compose_draft: EmailDraft,
     pub compose_draft_path: Option<PathBuf>,
+    pub compose_preview_scroll_offset: usize,
 
     pub signature_content: Option<String>,
     pub needs_signature_load: bool,

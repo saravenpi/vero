@@ -9,7 +9,7 @@ use ratatui::{
 
 use crate::tui::app::{App, ComposeStep};
 
-pub(crate) fn render(frame: &mut Frame, app: &App, area: Rect) {
+pub(crate) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     let inner = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(0)])

@@ -24,7 +24,6 @@ pub(super) fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
             }
             app.needs_inbox_load = true;
             app.inbox_loading = true;
-            app.inbox_error = None;
             app.needs_full_redraw = true;
         }
         KeyCode::Down | KeyCode::Char('j') => {

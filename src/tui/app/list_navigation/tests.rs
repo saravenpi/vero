@@ -1,7 +1,10 @@
 use super::*;
 use crate::{
     models::ViewMode,
-    tui::test_support::{test_app, test_draft_named, test_email},
+    tui::{
+        app::ComposeStep,
+        test_support::{test_app, test_draft_named, test_email},
+    },
 };
 
 #[test]
@@ -126,4 +129,27 @@ fn uppercase_g_moves_sent_detail_scroll_to_bottom_marker() {
 
     assert!(app.handle_list_jump_key(KeyCode::Char('G')));
     assert_eq!(app.sent_scroll_offset, usize::MAX);
+}
+
+#[test]
+fn double_g_moves_compose_preview_scroll_to_top() {
+    let mut app = test_app();
+    app.screen = Screen::Compose;
+    app.compose_step = ComposeStep::Preview;
+    app.compose_preview_scroll_offset = 9;
+
+    assert!(app.handle_list_jump_key(KeyCode::Char('g')));
+    assert!(app.handle_list_jump_key(KeyCode::Char('g')));
+    assert_eq!(app.compose_preview_scroll_offset, 0);
+}
+
+#[test]
+fn uppercase_g_moves_compose_preview_scroll_to_bottom_marker() {
+    let mut app = test_app();
+    app.screen = Screen::Compose;
+    app.compose_step = ComposeStep::Preview;
+    app.compose_preview_scroll_offset = 3;
+
+    assert!(app.handle_list_jump_key(KeyCode::Char('G')));
+    assert_eq!(app.compose_preview_scroll_offset, usize::MAX);
 }

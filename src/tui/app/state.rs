@@ -55,6 +55,7 @@ impl App {
             compose_step: ComposeStep::Editing,
             compose_draft: EmailDraft::default(),
             compose_draft_path: None,
+            compose_preview_scroll_offset: 0,
             signature_content: None,
             needs_signature_load: false,
             status_message: None,
@@ -119,5 +120,27 @@ mod tests {
         };
         let app = App::new(config);
         assert_eq!(app.inbox_filter, InboxFilter::All);
+    }
+
+    #[test]
+    fn screen_errors_do_not_expire_with_status_ttl() {
+        let mut app = App::new(VeroConfig {
+            accounts: Vec::new(),
+            download_folder: None,
+            inbox_view: String::new(),
+            auto_refresh: crate::config::AutoRefresh { seconds: 0 },
+            viewer: None,
+            editor: None,
+        });
+
+        app.set_inbox_error("still broken");
+        app.set_status("temporary");
+
+        for _ in 0..30 {
+            app.tick_spinner();
+        }
+
+        assert!(app.status_message.is_none());
+        assert_eq!(app.inbox_error.as_deref(), Some("still broken"));
     }
 }

@@ -50,7 +50,6 @@ pub async fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
         KeyCode::Char('r') => {
             app.needs_sent_load = true;
             app.sent_loading = true;
-            app.sent_error = None;
         }
         KeyCode::Tab => app.tab_next_screen(),
         KeyCode::BackTab => app.tab_prev_screen(),

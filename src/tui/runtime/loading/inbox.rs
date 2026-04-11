@@ -1,6 +1,7 @@
 use anyhow::Result;
 
 use crate::services::{self, InboxSnapshot};
+use crate::tui::error_messages::{format_cached_inbox_error, format_inbox_error};
 use crate::tui::App;
 
 pub(in crate::tui::runtime) type InboxLoadTask = tokio::task::JoinHandle<Result<InboxSnapshot>>;
@@ -19,11 +20,17 @@ pub(in crate::tui::runtime) fn maybe_load_cached_inbox(app: &mut App) {
     match services::load_cached_inbox(account) {
         Ok(snapshot) => {
             app.apply_inbox_snapshot(snapshot);
-            app.inbox_error = None;
+            if app
+                .inbox_error
+                .as_deref()
+                .is_some_and(|msg| msg.starts_with("Couldn't load cached inbox."))
+            {
+                app.inbox_error = None;
+            }
         }
         Err(error) => {
             if app.inbox_emails.is_empty() {
-                app.set_inbox_error(format!("Failed to load cached inbox: {}", error));
+                app.set_inbox_error(format_cached_inbox_error(&error));
             }
         }
     }
@@ -69,7 +76,8 @@ pub(in crate::tui::runtime) async fn handle_inbox_load_result(
             app.inbox_error = None;
         }
         Ok(Err(error)) => {
-            app.set_inbox_error(format!("Failed to fetch emails: {}", error));
+            let msg = format_inbox_error(app.current_account.as_ref(), &error);
+            app.set_inbox_error(msg);
             app.inbox_loading = false;
         }
         Err(error) => {

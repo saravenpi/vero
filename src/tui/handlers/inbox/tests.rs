@@ -49,7 +49,7 @@ async fn leaving_detail_view_triggers_background_refresh() {
     assert_eq!(app.inbox_scroll_offset, 0);
     assert!(app.needs_inbox_load);
     assert!(app.inbox_loading);
-    assert!(app.inbox_error.is_none());
+    assert_eq!(app.inbox_error.as_deref(), Some("old"));
     assert!(app.needs_full_redraw);
 }
 

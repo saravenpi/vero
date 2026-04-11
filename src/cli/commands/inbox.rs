@@ -43,8 +43,7 @@ pub(super) async fn execute(
                     .unwrap_or_else(|| ".".to_string());
                 default_folder.as_str()
             };
-            let paths =
-                services::download_inbox_attachments(&account, uid, index, folder).await?;
+            let paths = services::download_inbox_attachments(&account, uid, index, folder).await?;
             output::print_download_result(output, &paths)
         }
         InboxCommand::UnreadCount => {

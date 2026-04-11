@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use crate::services;
 use crate::storage;
 use crate::tui::app::{App, Screen};
+use crate::tui::error_messages::format_send_error;
 
 pub(in crate::tui::runtime) type ComposeSendTask = tokio::task::JoinHandle<Result<Option<PathBuf>>>;
 
@@ -57,7 +58,8 @@ pub(in crate::tui::runtime) async fn handle_send_result(
             app.navigate_to(next_screen);
         }
         Ok(Err(error)) => {
-            app.set_error(format!("Failed to send email: {}", error));
+            let msg = format_send_error(app.current_account.as_ref(), &error);
+            app.set_error(msg);
         }
         Err(error) => {
             app.set_error(format!("Task error: {}", error));

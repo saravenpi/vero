@@ -49,6 +49,7 @@ pub(super) fn handle_editor_open(app: &mut App) -> Result<()> {
                 Ok(parsed) => {
                     app.compose_draft = parsed.to_draft();
                     app.compose_step = ComposeStep::Preview;
+                    app.compose_preview_scroll_offset = 0;
                     app.error_message = None;
                     app.status_ttl = 0;
                 }

@@ -33,7 +33,6 @@ impl App {
         self.inbox_filter = filter;
         self.inbox_selected = 0;
         self.inbox_list_offset = 0;
-        self.inbox_error = None;
 
         if self.inbox_cache_loaded {
             self.refresh_inbox_emails(None);

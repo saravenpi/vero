@@ -1,4 +1,4 @@
-use super::{App, PendingListNavigation, Screen};
+use super::{App, ComposeStep, PendingListNavigation, Screen};
 use crate::models::ViewMode;
 use crossterm::event::KeyCode;
 
@@ -15,6 +15,9 @@ impl App {
             Screen::Drafts => self.jump_to_drafts(0),
             Screen::Sent if self.sent_view_mode == ViewMode::List => self.jump_to_sent(0),
             Screen::Sent if self.sent_view_mode == ViewMode::Detail => self.sent_scroll_offset = 0,
+            Screen::Compose if self.compose_step == ComposeStep::Preview => {
+                self.compose_preview_scroll_offset = 0;
+            }
             Screen::AccountSelection => {
                 self.account_selected = 0;
             }
@@ -41,6 +44,9 @@ impl App {
             }
             Screen::Sent if self.sent_view_mode == ViewMode::Detail => {
                 self.sent_scroll_offset = usize::MAX;
+            }
+            Screen::Compose if self.compose_step == ComposeStep::Preview => {
+                self.compose_preview_scroll_offset = usize::MAX;
             }
             Screen::AccountSelection => {
                 self.account_selected = self.config.accounts.len().saturating_sub(1);

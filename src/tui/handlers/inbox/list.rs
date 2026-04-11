@@ -87,5 +87,4 @@ fn cycle_filter_prev(app: &mut App) {
 fn refresh(app: &mut App) {
     app.needs_inbox_load = true;
     app.inbox_loading = true;
-    app.inbox_error = None;
 }

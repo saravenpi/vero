@@ -26,10 +26,7 @@ pub(super) fn print_email(email: &Email, index: Option<usize>) -> Result<()> {
 }
 
 pub(super) fn print_download_result(paths: &[PathBuf]) -> Result<()> {
-    let saved: Vec<_> = paths
-        .iter()
-        .map(|p| p.display().to_string())
-        .collect();
+    let saved: Vec<_> = paths.iter().map(|p| p.display().to_string()).collect();
     print_json(&DownloadResponse { saved })
 }
 

@@ -4,9 +4,30 @@ use super::{
 };
 use crate::{
     models::InboxFilter,
-    tui::test_support::{test_app, test_draft_index, test_email},
+    tui::{
+        app::{ComposeStep, Screen},
+        test_support::{test_app, test_draft_index, test_email},
+    },
 };
 use ratatui::{backend::TestBackend, style::Modifier, Terminal};
+
+fn buffer_lines(terminal: &Terminal<TestBackend>) -> Vec<String> {
+    let buffer = terminal.backend().buffer();
+    let width = buffer.area().width as usize;
+
+    buffer
+        .content()
+        .chunks(width)
+        .map(|row| {
+            row.iter()
+                .map(|cell| cell.symbol())
+                .collect::<Vec<_>>()
+                .join("")
+                .trim_end()
+                .to_string()
+        })
+        .collect()
+}
 
 #[test]
 fn sanitize_email_body_normalizes_crlf_and_tabs() {
@@ -99,7 +120,7 @@ fn drafts_render_updates_list_offset_to_keep_selection_visible() {
     let backend = TestBackend::new(80, 12);
     let mut terminal = Terminal::new(backend).unwrap();
     let mut app = test_app();
-    app.screen = crate::tui::app::Screen::Drafts;
+    app.screen = Screen::Drafts;
     app.drafts = (1..=20).map(test_draft_index).collect();
     app.drafts_selected = 15;
 
@@ -107,4 +128,29 @@ fn drafts_render_updates_list_offset_to_keep_selection_visible() {
 
     assert!(app.drafts_list_offset > 0);
     assert!(app.drafts_list_offset <= app.drafts_selected);
+}
+
+#[test]
+fn compose_preview_uses_clean_title_and_preserves_body_lines() {
+    let backend = TestBackend::new(90, 20);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = test_app();
+    app.screen = Screen::Compose;
+    app.compose_step = ComposeStep::Preview;
+    app.compose_draft.to = "person@example.com".to_string();
+    app.compose_draft.subject = "Preview subject".to_string();
+    app.compose_draft.body = "line one\nline two".to_string();
+
+    terminal.draw(|frame| render(frame, &mut app)).unwrap();
+
+    let lines = buffer_lines(&terminal);
+
+    assert!(lines.iter().any(|line| line.contains("Preview")));
+    assert!(!lines.iter().any(|line| line.contains("Compose - Preview")));
+    assert!(!lines.iter().any(|line| line.contains("Edit again")));
+    assert!(lines
+        .iter()
+        .any(|line| line.contains("Body:")));
+    assert!(lines.iter().any(|line| line.contains("line one")));
+    assert!(lines.iter().any(|line| line.contains("line two")));
 }

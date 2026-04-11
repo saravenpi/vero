@@ -1,26 +1,18 @@
 use ratatui::{
-    layout::Rect,
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph, Wrap},
+    widgets::Paragraph,
     Frame,
 };
 
 use crate::tui::{
     app::App,
-    ui::theme::{PRIMARY_COLOR, SUCCESS_COLOR},
+    ui::{body_viewer, theme::PRIMARY_COLOR},
 };
 
-pub(super) fn render(frame: &mut Frame, app: &App, area: Rect) {
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .border_style(Style::default().fg(PRIMARY_COLOR))
-        .title(Span::styled(
-            " ◇ Compose - Preview ",
-            Style::default().fg(PRIMARY_COLOR),
-        ));
-
-    let mut preview_lines = vec![Line::from(vec![
+pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
+    let mut header_lines = vec![Line::from(vec![
         Span::styled(
             "To: ",
             Style::default().add_modifier(Modifier::BOLD | Modifier::DIM),
@@ -29,7 +21,7 @@ pub(super) fn render(frame: &mut Frame, app: &App, area: Rect) {
     ])];
 
     if !app.compose_draft.cc.is_empty() {
-        preview_lines.push(Line::from(vec![
+        header_lines.push(Line::from(vec![
             Span::styled(
                 "CC: ",
                 Style::default().add_modifier(Modifier::BOLD | Modifier::DIM),
@@ -39,7 +31,7 @@ pub(super) fn render(frame: &mut Frame, app: &App, area: Rect) {
     }
 
     if !app.compose_draft.bcc.is_empty() {
-        preview_lines.push(Line::from(vec![
+        header_lines.push(Line::from(vec![
             Span::styled(
                 "BCC: ",
                 Style::default().add_modifier(Modifier::BOLD | Modifier::DIM),
@@ -48,7 +40,7 @@ pub(super) fn render(frame: &mut Frame, app: &App, area: Rect) {
         ]));
     }
 
-    preview_lines.push(Line::from(vec![
+    header_lines.push(Line::from(vec![
         Span::styled(
             "Subject: ",
             Style::default().add_modifier(Modifier::BOLD | Modifier::DIM),
@@ -57,7 +49,7 @@ pub(super) fn render(frame: &mut Frame, app: &App, area: Rect) {
     ]));
 
     if !app.compose_draft.attachments.is_empty() {
-        preview_lines.push(Line::from(vec![
+        header_lines.push(Line::from(vec![
             Span::styled(
                 "Attachments: ",
                 Style::default().add_modifier(Modifier::BOLD | Modifier::DIM),
@@ -69,23 +61,29 @@ pub(super) fn render(frame: &mut Frame, app: &App, area: Rect) {
         ]));
     }
 
-    preview_lines.push(Line::from(""));
-    preview_lines.push(Line::from(app.compose_draft.body.as_str()));
-    preview_lines.push(Line::from(""));
-
-    if !app.is_sending_email {
-        preview_lines.push(Line::from(Span::styled(
-            "Enter: Send  |  e: Edit again  |  ESC: Cancel",
-            Style::default()
-                .fg(SUCCESS_COLOR)
-                .add_modifier(Modifier::ITALIC),
-        )));
-    }
+    let sections = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(1),
+            Constraint::Length(header_lines.len() as u16),
+            Constraint::Length(1),
+            Constraint::Min(0),
+        ])
+        .split(area);
 
     frame.render_widget(
-        Paragraph::new(preview_lines)
-            .block(block)
-            .wrap(Wrap { trim: false }),
-        area,
+        Paragraph::new(Span::styled("Preview", Style::default().fg(PRIMARY_COLOR))),
+        sections[0],
+    );
+    frame.render_widget(Paragraph::new(header_lines), sections[1]);
+    frame.render_widget(
+        Paragraph::new("Body:").style(Style::default().add_modifier(Modifier::DIM)),
+        sections[2],
+    );
+    body_viewer::render(
+        frame,
+        sections[3],
+        &mut app.compose_preview_scroll_offset,
+        app.compose_draft.body.as_str(),
     );
 }

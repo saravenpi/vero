@@ -20,14 +20,12 @@ impl App {
                 self.needs_inbox_cache_load = true;
                 self.needs_inbox_load = true;
                 self.inbox_loading = true;
-                self.inbox_error = None;
             }
             Screen::Drafts => {
                 self.menu_selected = 2;
                 self.focused = FocusedElement::Content;
                 self.drafts_selected = 0;
                 self.drafts_list_offset = 0;
-                self.drafts_error = None;
                 self.needs_drafts_load = true;
             }
             Screen::Sent => {
@@ -39,7 +37,6 @@ impl App {
                 self.sent_scroll_offset = 0;
                 self.needs_sent_load = true;
                 self.sent_loading = true;
-                self.sent_error = None;
             }
             Screen::Compose => {
                 self.pre_compose_screen = Some(current_screen);
@@ -48,6 +45,7 @@ impl App {
                 self.compose_step = ComposeStep::Editing;
                 self.compose_draft = EmailDraft::default();
                 self.compose_draft_path = None;
+                self.compose_preview_scroll_offset = 0;
                 self.needs_editor_open = true;
             }
             Screen::Signatures => {
@@ -71,6 +69,7 @@ impl App {
         self.compose_step = ComposeStep::Editing;
         self.compose_draft = EmailDraft::default();
         self.compose_draft_path = Some(path);
+        self.compose_preview_scroll_offset = 0;
         self.needs_editor_open = true;
     }
 

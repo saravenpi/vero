@@ -1,6 +1,6 @@
 use ratatui::{
     layout::Rect,
-    style::{Modifier, Style},
+    style::Style,
     text::{Line, Span, Text},
     widgets::Paragraph,
     Frame,
@@ -8,15 +8,12 @@ use ratatui::{
 
 use crate::models::ViewMode;
 use crate::tui::app::{App, ComposeStep, Screen};
-use crate::tui::ui::theme::{ERROR_COLOR, PRIMARY_COLOR, SUCCESS_COLOR};
+use crate::tui::ui::theme::{muted_text_style, ERROR_COLOR, PRIMARY_COLOR, SUCCESS_COLOR};
 
 pub(crate) fn render_footer(frame: &mut Frame, app: &App, area: Rect) {
     let help_text = help_text(app);
 
-    let help_line = Line::from(Span::styled(
-        format!(" {} ", help_text),
-        Style::default().add_modifier(Modifier::DIM),
-    ));
+    let help_line = Line::from(Span::styled(format!(" {} ", help_text), muted_text_style()));
 
     let status_line = if let Some(prompt) = search_prompt(app) {
         Line::from(Span::styled(
@@ -41,7 +38,7 @@ pub(crate) fn render_footer(frame: &mut Frame, app: &App, area: Rect) {
     } else if app.inbox_open_loading {
         Line::from(Span::styled(
             format!(" {} Opening email… ", app.spinner_char()),
-            Style::default().add_modifier(Modifier::DIM),
+            muted_text_style(),
         ))
     } else if app.is_downloading_attachment {
         Line::from(Span::styled(
@@ -56,12 +53,12 @@ pub(crate) fn render_footer(frame: &mut Frame, app: &App, area: Rect) {
     } else if app.inbox_loading {
         Line::from(Span::styled(
             format!(" {} Refreshing inbox… ", app.spinner_char()),
-            Style::default().add_modifier(Modifier::DIM),
+            muted_text_style(),
         ))
     } else if app.sent_loading {
         Line::from(Span::styled(
             format!(" {} Refreshing sent… ", app.spinner_char()),
-            Style::default().add_modifier(Modifier::DIM),
+            muted_text_style(),
         ))
     } else {
         Line::from("")
@@ -102,9 +99,9 @@ fn help_text(app: &App) -> String {
                     .selected_inbox_email()
                     .is_some_and(|email| !email.attachments.is_empty());
                 if has_attachments {
-                    "d: Attachments  e: Editor  Esc: Back  Tab: Switch".to_string()
+                    "j/k: Scroll  d: Attachments  e: Editor  Esc: Back  Tab: Switch".to_string()
                 } else {
-                    "e: Editor  Esc: Back  Tab: Switch".to_string()
+                    "j/k: Scroll  e: Editor  Esc: Back  Tab: Switch".to_string()
                 }
             }
         },
@@ -117,10 +114,12 @@ fn help_text(app: &App) -> String {
                 "n: New  d: Delete  /: Edit  Esc: Clear search  Tab: Switch".to_string()
             }
             ViewMode::List => "n: New  d: Delete  /: Search  r: Refresh  Tab: Switch".to_string(),
-            ViewMode::Detail => "e: Editor  Esc: Back  Tab: Switch".to_string(),
+            ViewMode::Detail => "j/k: Scroll  e: Editor  Esc: Back  Tab: Switch".to_string(),
         },
         Screen::Compose => match app.compose_step {
-            ComposeStep::Preview => "Enter: Send  e: Edit  ESC: Save as draft".to_string(),
+            ComposeStep::Preview => {
+                "j/k: Scroll  Enter: Send  e: Edit  Esc: Save as draft".to_string()
+            }
             ComposeStep::NoEditor => "Any key: Return to menu".to_string(),
             ComposeStep::Editing => "Editor is opening...".to_string(),
         },

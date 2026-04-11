@@ -1,4 +1,5 @@
 mod account_selection;
+mod body_viewer;
 mod chrome;
 mod compose;
 mod detail;
