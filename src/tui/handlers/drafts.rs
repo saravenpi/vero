@@ -12,6 +12,18 @@ pub async fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
         return Ok(());
     }
 
+    if app.handle_list_search_key(key) {
+        return Ok(());
+    }
+
+    if matches!(key.code, KeyCode::Char('/')) && app.begin_list_search() {
+        return Ok(());
+    }
+
+    if matches!(key.code, KeyCode::Esc) && app.clear_current_list_search() {
+        return Ok(());
+    }
+
     if common::handle_list_jump(app, key) {
         return Ok(());
     }
@@ -21,14 +33,15 @@ pub async fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
             app.navigate_to(Screen::Compose);
         }
         KeyCode::Enter => {
-            if let Some((path, _)) = app.drafts.get(app.drafts_selected).cloned() {
+            if let Some((path, _)) = app.selected_draft().cloned() {
                 app.resume_draft(path);
             }
         }
         KeyCode::Char('d') => {
-            if let Some((path, _)) = app.drafts.get(app.drafts_selected).cloned() {
+            if let Some(index) = app.selected_draft_index() {
+                let path = app.drafts[index].0.clone();
                 storage::delete_draft_file(&path).ok();
-                app.drafts.remove(app.drafts_selected);
+                app.drafts.remove(index);
                 app.clamp_drafts_selection();
                 app.set_status("Draft deleted.");
             }

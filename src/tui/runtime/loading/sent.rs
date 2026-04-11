@@ -41,8 +41,7 @@ pub(in crate::tui::runtime) async fn handle_sent_load_result(
 
     match load_task.await {
         Ok(Ok(emails)) => {
-            app.sent_emails = emails;
-            app.clamp_sent_selection();
+            app.replace_sent_emails(emails);
             app.sent_loading = false;
             app.sent_error = None;
         }

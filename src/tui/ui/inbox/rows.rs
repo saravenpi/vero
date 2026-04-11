@@ -13,11 +13,12 @@ use crate::tui::{
 };
 
 pub(super) fn items(app: &App, available_width: usize) -> Vec<ListItem<'static>> {
-    app.inbox_emails
-        .iter()
+    app.inbox_visible_indices()
+        .into_iter()
         .enumerate()
-        .map(|(index, email)| {
-            let is_selected = index == app.inbox_selected;
+        .map(|(visible_index, actual_index)| {
+            let email = &app.inbox_emails[actual_index];
+            let is_selected = visible_index == app.inbox_selected;
             let (bg_color, fg_color, modifier) = list::selection_style(is_selected);
             let subject_max = available_width.saturating_sub(30).max(20);
             let from_max = 25;

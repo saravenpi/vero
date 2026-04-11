@@ -1,4 +1,4 @@
-use super::{App, ComposeStep, FocusedElement, Screen};
+use super::{App, ComposeStep, FocusedElement, ListSearch, Screen};
 use crate::config::VeroConfig;
 use crate::models::{EmailDraft, InboxFilter, ViewMode};
 
@@ -37,11 +37,13 @@ impl App {
             inbox_unseen_count: 0,
             inbox_scroll_offset: 0,
             inbox_list_offset: 0,
+            inbox_search: ListSearch::default(),
             drafts: Vec::new(),
             drafts_selected: 0,
             drafts_list_offset: 0,
             drafts_error: None,
             needs_drafts_load: false,
+            drafts_search: ListSearch::default(),
             sent_emails: Vec::new(),
             sent_selected: 0,
             sent_view_mode: ViewMode::List,
@@ -49,6 +51,7 @@ impl App {
             sent_error: None,
             sent_scroll_offset: 0,
             sent_list_offset: 0,
+            sent_search: ListSearch::default(),
             compose_step: ComposeStep::Editing,
             compose_draft: EmailDraft::default(),
             compose_draft_path: None,

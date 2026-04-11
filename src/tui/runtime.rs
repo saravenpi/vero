@@ -99,7 +99,7 @@ async fn run_app<B: ratatui::backend::Backend>(
                         break;
                     }
 
-                    if is_quit_key(&key) {
+                    if !app.is_list_search_editing() && is_quit_key(&key) {
                         break;
                     }
 

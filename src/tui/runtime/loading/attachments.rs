@@ -24,7 +24,7 @@ pub(in crate::tui::runtime) fn maybe_spawn_attachment_download(
         return;
     };
 
-    let Some(email) = app.inbox_emails.get(app.inbox_selected) else {
+    let Some(email) = app.selected_inbox_email() else {
         app.set_error("No email selected");
         app.is_downloading_attachment = false;
         return;

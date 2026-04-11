@@ -1,22 +1,14 @@
 # Vero
 
-Terminal email client built in Rust with both TUI and CLI workflows. Everything is a file.
+Terminal email client in Rust with TUI and CLI workflows. Everything is a file.
 
-## Philosophy
-
-- Shared core email operations for TUI and CLI
-- Editor-first composition workflow
-- File-based storage (plain text `.eml` files)
-- Unix composability
-- Zero hidden formats
-
-## Installation
+## Install
 
 ```bash
 cargo install --path .
 ```
 
-## Configuration
+## Configure
 
 Create `~/.vero.yml`:
 
@@ -36,15 +28,13 @@ auto_refresh: 30
 inbox_view: all
 ```
 
-`editor` is only required if you want TUI compose support.
+`editor` is only needed for TUI compose support.
 
-## Usage
+## Run
 
 ```bash
 vero
 ```
-
-Starts the TUI.
 
 ### CLI
 
@@ -68,25 +58,33 @@ Useful commands:
 
 Use `--json` when another tool or model should parse the output instead of eyeballing it.
 
-### Navigation
+## TUI
 
-- `j`/`k` or `↑`/`↓` - Navigate
-- `Enter` - Select
-- `Tab` - Switch focus
-- `ESC` - Back
-- `q` - Quit
+- `j`/`k` or `↑`/`↓`: move
+- `Enter`: open or select
+- `Tab`: switch screens
+- `Esc`: back
+- `/`: search the current list
+- `gg` / `G`: jump to top or bottom
+- `q`: quit
 
 ### Inbox
 
-- `r` - Refresh
-- `d` - Delete
-- `u`/`s`/`a` - Filter (unseen/seen/all)
-- `e` - Open in external viewer
-- `Enter` - View email
+- `r`: refresh
+- `d`: delete
+- `u` / `s` / `a`: unseen, seen, all
+- `e`: open in external viewer
+
+### List Search
+
+- Works in inbox, sent, and drafts
+- Inbox search works in all list filters: `all`, `unseen`, `seen`
+- Matches subject plus sender/contact fields
+- Filters live as you type
 
 ### Compose
 
-Opens your editor with:
+The editor opens with:
 
 ```
 to: recipient@example.com
@@ -97,13 +95,11 @@ attachments: ~/file.pdf
 body: Your message here
 ```
 
-Required: `to` and `subject`
+Required fields: `to`, `subject`
 
-Preview → `Enter` to send, `e` to edit, `ESC` to cancel
+## Draft Format
 
-### Draft File Format
-
-The TUI compose flow and `vero send --draft` use the same plain-text format:
+TUI compose and `vero send --draft` use the same plain-text format:
 
 ```
 to: recipient@example.com
@@ -128,13 +124,11 @@ All files are human-readable `.eml` format.
 
 ## Layout
 
-The project is split so the TUI and CLI share the same service layer:
-
-- `src/app/` top-level app entry and mode dispatch
-- `src/cli/` command parsing, execution, help, and output formatting
-- `src/services/` account resolution, inbox, sent mail, draft parsing, and sending
-- `src/tui/` runtime, handlers, and UI rendering
-- `src/storage/` local `.eml` persistence
+- `src/cli/`: parsing, commands, output
+- `src/services/`: shared mail operations
+- `src/tui/`: runtime, handlers, UI
+- `src/storage/`: local `.eml` persistence
+- `src/email/imap_client/`: IMAP fetch and body parsing
 
 ## License
 

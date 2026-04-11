@@ -27,14 +27,13 @@ pub(crate) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         .margin(1)
         .split(area);
 
-    let title = format!(" ▲ Sent ({}) ", app.sent_emails.len());
     let block = Block::default()
         .borders(Borders::NONE)
-        .title(Span::styled(title, Style::default().fg(PRIMARY_COLOR)));
+        .title(Span::styled(title(app), Style::default().fg(PRIMARY_COLOR)));
 
-    if app.sent_emails.is_empty() {
+    if app.sent_visible_len() == 0 {
         frame.render_widget(
-            Paragraph::new("No sent emails found")
+            Paragraph::new(empty_text(app))
                 .block(block)
                 .alignment(Alignment::Center),
             inner[0],
@@ -44,11 +43,12 @@ pub(crate) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
 
     let available_width = inner[0].width.saturating_sub(4) as usize;
     let items: Vec<ListItem> = app
-        .sent_emails
-        .iter()
+        .sent_visible_indices()
+        .into_iter()
         .enumerate()
-        .map(|(index, email)| {
-            let is_selected = index == app.sent_selected;
+        .map(|(visible_index, actual_index)| {
+            let email = &app.sent_emails[actual_index];
+            let is_selected = visible_index == app.sent_selected;
             let (bg_color, fg_color, modifier) = list::selection_style(is_selected);
             let unknown = String::from("Unknown");
             let to = email.to.as_ref().unwrap_or(&unknown);
@@ -98,4 +98,28 @@ pub(crate) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         &mut app.sent_selected,
         &mut app.sent_list_offset,
     );
+}
+
+fn title(app: &App) -> String {
+    if app.sent_search().is_active() {
+        return format!(
+            " ▲ Sent ({}/{}) /{} ",
+            app.sent_visible_len(),
+            app.sent_emails.len(),
+            app.sent_search().display_query(),
+        );
+    }
+
+    format!(" ▲ Sent ({}) ", app.sent_emails.len())
+}
+
+fn empty_text(app: &App) -> String {
+    if app.sent_search().is_active() && !app.sent_emails.is_empty() {
+        return format!(
+            "No sent emails match /{}",
+            app.sent_search().display_query()
+        );
+    }
+
+    "No sent emails found".to_string()
 }

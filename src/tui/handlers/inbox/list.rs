@@ -28,16 +28,15 @@ pub(super) async fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
 }
 
 fn open_selected_email(app: &mut App) {
-    if app.inbox_selected >= app.inbox_emails.len() {
-        return;
-    }
-
     if app.current_account.is_none() {
         app.set_error("No account selected");
         return;
     }
 
-    let email = app.inbox_emails[app.inbox_selected].clone();
+    let Some(email) = app.selected_inbox_email().cloned() else {
+        return;
+    };
+
     app.cancel_inbox_load = true;
     app.inbox_loading = false;
     app.inbox_open_loading = true;
@@ -46,16 +45,15 @@ fn open_selected_email(app: &mut App) {
 }
 
 async fn delete_selected_email(app: &mut App) -> Result<()> {
-    if app.inbox_selected >= app.inbox_emails.len() {
-        return Ok(());
-    }
-
     let Some(account) = app.current_account.clone() else {
         app.set_error("No account selected");
         return Ok(());
     };
 
-    let email = app.inbox_emails[app.inbox_selected].clone();
+    let Some(email) = app.selected_inbox_email().cloned() else {
+        return Ok(());
+    };
+
     services::delete_loaded_inbox_email(&account, &email).await?;
 
     app.remove_inbox_email(email.uid);

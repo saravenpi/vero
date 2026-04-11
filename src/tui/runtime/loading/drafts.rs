@@ -11,8 +11,7 @@ pub(in crate::tui::runtime) fn handle_drafts_load(app: &mut App) {
     if let Some(account) = app.current_account.as_ref() {
         match storage::load_drafts(&account.email) {
             Ok(drafts) => {
-                app.drafts = drafts;
-                app.clamp_drafts_selection();
+                app.replace_drafts(drafts);
                 app.drafts_error = None;
             }
             Err(e) => {

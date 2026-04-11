@@ -14,6 +14,7 @@ use crate::tui::App;
 
 pub async fn handle_key_event(app: &mut App, key: KeyEvent) -> Result<()> {
     if matches!(key.code, KeyCode::Char('n'))
+        && !app.is_list_search_editing()
         && matches!(app.screen, Screen::Inbox | Screen::Drafts | Screen::Sent)
     {
         app.navigate_to(Screen::Compose);

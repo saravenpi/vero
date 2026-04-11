@@ -2,11 +2,13 @@ mod inbox;
 mod lifecycle;
 mod list_navigation;
 mod navigation;
+mod search;
 mod selection;
 mod state;
 
 use crate::config::{Account, VeroConfig};
 use crate::models::{Email, EmailDraft, InboxFilter, ViewMode};
+use search::ListSearch;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -58,12 +60,14 @@ pub struct App {
     pub inbox_unseen_count: usize,
     pub inbox_scroll_offset: usize,
     pub inbox_list_offset: usize,
+    inbox_search: ListSearch,
 
     pub drafts: Vec<(PathBuf, EmailDraft)>,
     pub drafts_selected: usize,
     pub drafts_list_offset: usize,
     pub drafts_error: Option<String>,
     pub needs_drafts_load: bool,
+    drafts_search: ListSearch,
 
     pub sent_emails: Vec<Email>,
     pub sent_selected: usize,
@@ -72,6 +76,7 @@ pub struct App {
     pub sent_error: Option<String>,
     pub sent_scroll_offset: usize,
     pub sent_list_offset: usize,
+    sent_search: ListSearch,
 
     pub compose_step: ComposeStep,
     pub compose_draft: EmailDraft,

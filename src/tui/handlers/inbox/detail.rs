@@ -20,7 +20,7 @@ pub(super) fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
             app.inbox_view_mode = ViewMode::List;
             app.inbox_scroll_offset = 0;
             if app.inbox_cache_loaded {
-                app.refresh_inbox_emails(None);
+                app.refresh_inbox_emails(app.selected_inbox_uid());
             }
             app.needs_inbox_load = true;
             app.inbox_loading = true;
@@ -42,8 +42,7 @@ pub(super) fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
         KeyCode::Tab => app.tab_next_screen(),
         KeyCode::BackTab => app.tab_prev_screen(),
         KeyCode::Char('d') => {
-            if app.inbox_selected < app.inbox_emails.len() {
-                let email = &app.inbox_emails[app.inbox_selected];
+            if let Some(email) = app.selected_inbox_email() {
                 if email.attachments.is_empty() {
                     app.set_error("No attachments in this email");
                 } else {
@@ -53,10 +52,9 @@ pub(super) fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
             }
         }
         KeyCode::Char('e') => {
-            if app.inbox_selected < app.inbox_emails.len() {
+            if let Some(email) = app.selected_inbox_email() {
                 let viewer = app.config.editor.as_ref().or(app.config.viewer.as_ref());
                 if let Some(viewer) = viewer {
-                    let email = &app.inbox_emails[app.inbox_selected];
                     open_email_in_viewer(viewer, email)?;
                     app.needs_full_redraw = true;
                 }
@@ -74,9 +72,8 @@ fn handle_attachment_view(app: &mut App, key: KeyEvent) -> Result<()> {
     }
 
     let attachment_count = app
-        .inbox_emails
-        .get(app.inbox_selected)
-        .map(|e| e.attachments.len())
+        .selected_inbox_email()
+        .map(|email| email.attachments.len())
         .unwrap_or(0);
 
     match key.code {
@@ -90,8 +87,7 @@ fn handle_attachment_view(app: &mut App, key: KeyEvent) -> Result<()> {
             }
         }
         KeyCode::Up | KeyCode::Char('k') => {
-            app.inbox_attachment_selected =
-                app.inbox_attachment_selected.saturating_sub(1);
+            app.inbox_attachment_selected = app.inbox_attachment_selected.saturating_sub(1);
         }
         KeyCode::Enter => {
             if attachment_count > 0 {

@@ -5,10 +5,7 @@ use super::App;
 
 impl App {
     pub fn apply_inbox_snapshot(&mut self, mut snapshot: InboxSnapshot) {
-        let selected_uid = self
-            .inbox_emails
-            .get(self.inbox_selected)
-            .map(|email| email.uid);
+        let selected_uid = self.selected_inbox_uid();
 
         merge_loaded_email_bodies(&self.inbox_cached_emails, &mut snapshot.emails);
         self.inbox_cached_emails = snapshot.emails;
@@ -25,8 +22,7 @@ impl App {
             .cloned()
             .collect();
 
-        restore_inbox_selection(self, selected_uid);
-        self.clamp_inbox_selection();
+        self.restore_inbox_search_selection(selected_uid);
     }
 
     pub fn set_inbox_filter(&mut self, filter: InboxFilter) {
@@ -74,9 +70,7 @@ impl App {
 
     pub fn remove_inbox_email(&mut self, uid: u32) {
         let selected_uid = self
-            .inbox_emails
-            .get(self.inbox_selected)
-            .map(|email| email.uid)
+            .selected_inbox_uid()
             .filter(|selected_uid| *selected_uid != uid);
 
         if let Some(email) = self
@@ -91,22 +85,6 @@ impl App {
 
         self.inbox_cached_emails.retain(|email| email.uid != uid);
         self.refresh_inbox_emails(selected_uid);
-    }
-}
-
-fn restore_inbox_selection(app: &mut App, selected_uid: Option<u32>) {
-    if let Some(uid) = selected_uid {
-        if let Some(index) = app.inbox_emails.iter().position(|email| email.uid == uid) {
-            app.inbox_selected = index;
-            return;
-        }
-    }
-
-    if app.inbox_emails.is_empty() {
-        app.inbox_selected = 0;
-        app.inbox_list_offset = 0;
-    } else if app.inbox_selected >= app.inbox_emails.len() {
-        app.inbox_selected = app.inbox_emails.len() - 1;
     }
 }
 

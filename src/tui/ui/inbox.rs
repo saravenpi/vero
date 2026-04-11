@@ -50,15 +50,9 @@ pub(crate) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         .borders(Borders::NONE)
         .title(Span::styled(title(app), Style::default().fg(PRIMARY_COLOR)));
 
-    if app.inbox_emails.is_empty() {
-        let empty_text = if app.inbox_loading && !app.inbox_cache_loaded {
-            "No cached emails"
-        } else {
-            "No emails found"
-        };
-
+    if app.inbox_visible_len() == 0 {
         frame.render_widget(
-            Paragraph::new(empty_text)
+            Paragraph::new(empty_text(app))
                 .block(block)
                 .alignment(Alignment::Center),
             inner[0],
@@ -80,5 +74,26 @@ pub(crate) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
 }
 
 pub(crate) fn title(app: &App) -> String {
+    if app.inbox_search().is_active() {
+        return format!(
+            " ▼ Inbox ({}/{}) /{} ",
+            app.inbox_visible_len(),
+            app.inbox_emails.len(),
+            app.inbox_search().display_query(),
+        );
+    }
+
     format!(" ▼ Inbox ({}) ", app.inbox_emails.len())
+}
+
+fn empty_text(app: &App) -> String {
+    if app.inbox_search().is_active() && !app.inbox_emails.is_empty() {
+        return format!("No emails match /{}", app.inbox_search().display_query());
+    }
+
+    if app.inbox_loading && !app.inbox_cache_loaded {
+        return "No cached emails".to_string();
+    }
+
+    "No emails found".to_string()
 }

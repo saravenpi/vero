@@ -82,3 +82,72 @@ async fn detail_view_supports_gg_and_g_scroll_jumps() {
     .unwrap();
     assert_eq!(app.inbox_scroll_offset, usize::MAX);
 }
+
+#[tokio::test]
+async fn slash_search_filters_inbox_rows_by_subject_and_sender() {
+    let mut app = test_app();
+    app.focused = FocusedElement::Content;
+    app.inbox_view_mode = ViewMode::List;
+
+    let mut alpha = crate::tui::test_support::test_email(1);
+    alpha.subject = "Invoice".to_string();
+    alpha.from = "Alice Example <alice@example.com>".to_string();
+
+    let mut beta = crate::tui::test_support::test_email(2);
+    beta.subject = "Status".to_string();
+    beta.from = "Bob Example <bob@example.com>".to_string();
+
+    app.inbox_emails = vec![alpha, beta];
+
+    handle(
+        &mut app,
+        KeyEvent::new(KeyCode::Char('/'), KeyModifiers::NONE),
+    )
+    .await
+    .unwrap();
+    handle(
+        &mut app,
+        KeyEvent::new(KeyCode::Char('b'), KeyModifiers::NONE),
+    )
+    .await
+    .unwrap();
+
+    assert!(app.is_list_search_editing());
+    assert_eq!(app.inbox_visible_len(), 1);
+    assert_eq!(app.selected_inbox_uid(), Some(2));
+}
+
+#[tokio::test]
+async fn escape_clears_active_search_before_leaving_inbox() {
+    let mut app = test_app();
+    app.focused = FocusedElement::Content;
+    app.inbox_view_mode = ViewMode::List;
+    app.inbox_emails = vec![crate::tui::test_support::test_email(1)];
+
+    handle(
+        &mut app,
+        KeyEvent::new(KeyCode::Char('/'), KeyModifiers::NONE),
+    )
+    .await
+    .unwrap();
+    handle(
+        &mut app,
+        KeyEvent::new(KeyCode::Char('a'), KeyModifiers::NONE),
+    )
+    .await
+    .unwrap();
+    handle(&mut app, KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE))
+        .await
+        .unwrap();
+    handle(&mut app, KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE))
+        .await
+        .unwrap();
+
+    assert_eq!(app.screen, crate::tui::app::Screen::Inbox);
+    assert!(!app.inbox_search().is_active());
+
+    handle(&mut app, KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE))
+        .await
+        .unwrap();
+    assert_eq!(app.screen, crate::tui::app::Screen::AccountSelection);
+}

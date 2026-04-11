@@ -25,18 +25,18 @@ impl App {
     pub fn select_last(&mut self) {
         match self.screen {
             Screen::Inbox if self.inbox_view_mode == ViewMode::List => {
-                let last = self.inbox_emails.len().saturating_sub(1);
+                let last = self.inbox_visible_len().saturating_sub(1);
                 self.jump_to_inbox(last);
             }
             Screen::Inbox if self.inbox_view_mode == ViewMode::Detail => {
                 self.inbox_scroll_offset = usize::MAX;
             }
             Screen::Drafts => {
-                let last = self.drafts.len().saturating_sub(1);
+                let last = self.drafts_visible_len().saturating_sub(1);
                 self.jump_to_drafts(last);
             }
             Screen::Sent if self.sent_view_mode == ViewMode::List => {
-                let last = self.sent_emails.len().saturating_sub(1);
+                let last = self.sent_visible_len().saturating_sub(1);
                 self.jump_to_sent(last);
             }
             Screen::Sent if self.sent_view_mode == ViewMode::Detail => {
@@ -73,35 +73,38 @@ impl App {
     }
 
     fn jump_to_inbox(&mut self, selected: usize) {
-        if self.inbox_emails.is_empty() {
+        let len = self.inbox_visible_len();
+        if len == 0 {
             self.inbox_selected = 0;
             self.inbox_list_offset = 0;
             return;
         }
 
-        self.inbox_selected = selected.min(self.inbox_emails.len() - 1);
+        self.inbox_selected = selected.min(len - 1);
         self.inbox_list_offset = self.inbox_selected;
     }
 
     fn jump_to_drafts(&mut self, selected: usize) {
-        if self.drafts.is_empty() {
+        let len = self.drafts_visible_len();
+        if len == 0 {
             self.drafts_selected = 0;
             self.drafts_list_offset = 0;
             return;
         }
 
-        self.drafts_selected = selected.min(self.drafts.len() - 1);
+        self.drafts_selected = selected.min(len - 1);
         self.drafts_list_offset = self.drafts_selected;
     }
 
     fn jump_to_sent(&mut self, selected: usize) {
-        if self.sent_emails.is_empty() {
+        let len = self.sent_visible_len();
+        if len == 0 {
             self.sent_selected = 0;
             self.sent_list_offset = 0;
             return;
         }
 
-        self.sent_selected = selected.min(self.sent_emails.len() - 1);
+        self.sent_selected = selected.min(len - 1);
         self.sent_list_offset = self.sent_selected;
     }
 }

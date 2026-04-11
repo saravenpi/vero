@@ -1,11 +1,14 @@
+mod attachments;
+mod html;
+mod text;
+
 use anyhow::Result;
-use html2text::from_read;
-use mailparse::MailHeaderMap;
-use std::char;
 
 use crate::models::Attachment;
 
-const HTML_RENDER_WIDTH: usize = 120;
+use attachments::attachment_identity;
+use html::render_html_to_terminal_text;
+use text::{extract_text_part, join_body_parts, normalize_plain_text, push_unique_part};
 
 #[derive(Default)]
 struct ExtractedBodies {
@@ -55,48 +58,7 @@ impl ExtractedBodies {
 pub(super) fn extract_attachments_with_bytes(
     mail: &mailparse::ParsedMail,
 ) -> Result<Vec<(Attachment, Vec<u8>)>> {
-    let mut result = Vec::new();
-    collect_attachment_bytes(mail, &mut result)?;
-    Ok(result)
-}
-
-fn attachment_identity(mail: &mailparse::ParsedMail) -> Option<(String, String)> {
-    let content_disposition = mail.headers.get_first_value("Content-Disposition");
-    if !is_attachment(content_disposition.as_deref()) {
-        return None;
-    }
-    let filename = content_disposition
-        .as_deref()
-        .and_then(extract_filename)
-        .unwrap_or_else(|| "unknown".to_string());
-    let content_type = mail.ctype.mimetype.to_ascii_lowercase();
-    Some((filename, content_type))
-}
-
-fn collect_attachment_bytes(
-    mail: &mailparse::ParsedMail,
-    result: &mut Vec<(Attachment, Vec<u8>)>,
-) -> Result<()> {
-    if let Some((filename, content_type)) = attachment_identity(mail) {
-        let bytes = mail.get_body_raw()?;
-        let size = bytes.len() as i64;
-        result.push((
-            Attachment {
-                filename,
-                content_type,
-                size,
-                file_path: None,
-            },
-            bytes,
-        ));
-        return Ok(());
-    }
-
-    for subpart in &mail.subparts {
-        collect_attachment_bytes(subpart, result)?;
-    }
-
-    Ok(())
+    attachments::extract_attachments_with_bytes(mail)
 }
 
 pub(super) fn extract_body_and_attachments(
@@ -180,227 +142,6 @@ fn extract_alternative_parts(
     }
 
     Ok(preferred_plain.or(preferred_html).unwrap_or_default())
-}
-
-fn extract_text_part(mail: &mailparse::ParsedMail) -> Option<String> {
-    let text = mail.get_body().ok()?;
-    if text.trim().is_empty() {
-        None
-    } else {
-        Some(text)
-    }
-}
-
-fn join_body_parts(parts: &[String]) -> Option<String> {
-    let merged = parts
-        .iter()
-        .filter(|part| !part.is_empty())
-        .cloned()
-        .collect::<Vec<_>>()
-        .join("\n\n");
-
-    if merged.is_empty() {
-        None
-    } else {
-        Some(merged)
-    }
-}
-
-fn push_unique_part(parts: &mut Vec<String>, part: String) {
-    if parts.last().is_some_and(|existing| existing == &part) {
-        return;
-    }
-
-    parts.push(part);
-}
-
-fn is_attachment(content_disposition: Option<&str>) -> bool {
-    content_disposition
-        .map(|value| value.to_ascii_lowercase().contains("attachment"))
-        .unwrap_or(false)
-}
-
-fn extract_filename(content_disposition: &str) -> Option<String> {
-    for part in content_disposition.split(';') {
-        let part = part.trim();
-        if let Some(stripped) = part.strip_prefix("filename=") {
-            return Some(stripped.trim_matches(|c| c == '"' || c == '\'').to_string());
-        }
-    }
-    None
-}
-
-fn normalize_plain_text(text: &str) -> String {
-    normalize_terminal_text(text, false)
-}
-
-fn render_html_to_terminal_text(html: &str) -> String {
-    let rendered =
-        from_read(html.as_bytes(), HTML_RENDER_WIDTH).unwrap_or_else(|_| strip_html_fallback(html));
-
-    normalize_terminal_text(rendered.as_str(), false)
-}
-
-fn strip_html_fallback(html: &str) -> String {
-    let mut text = String::with_capacity(html.len());
-    let mut in_tag = false;
-
-    for ch in html.chars() {
-        match ch {
-            '<' => in_tag = true,
-            '>' => in_tag = false,
-            _ if !in_tag => text.push(ch),
-            _ => {}
-        }
-    }
-
-    normalize_terminal_text(decode_html_entities(text.as_str()).as_str(), true)
-}
-
-fn decode_html_entities(text: &str) -> String {
-    let mut decoded = String::with_capacity(text.len());
-    let mut chars = text.chars().peekable();
-
-    while let Some(ch) = chars.next() {
-        if ch != '&' {
-            decoded.push(ch);
-            continue;
-        }
-
-        let mut entity = String::new();
-        let mut terminated = false;
-
-        while let Some(&next) = chars.peek() {
-            if next == ';' {
-                entity.push(next);
-                chars.next();
-                terminated = true;
-                break;
-            }
-
-            if next.is_whitespace() || next == '<' || entity.len() >= 16 {
-                break;
-            }
-
-            entity.push(next);
-            chars.next();
-        }
-
-        if terminated {
-            if let Some(replacement) = decode_html_entity(entity.as_str()) {
-                decoded.push_str(replacement.as_str());
-                continue;
-            }
-        }
-
-        decoded.push('&');
-        decoded.push_str(entity.as_str());
-    }
-
-    decoded
-}
-
-fn decode_html_entity(entity: &str) -> Option<String> {
-    let name = entity.strip_suffix(';')?;
-
-    if let Some(hex) = name.strip_prefix("#x").or_else(|| name.strip_prefix("#X")) {
-        return u32::from_str_radix(hex, 16)
-            .ok()
-            .and_then(char::from_u32)
-            .map(|value| value.to_string());
-    }
-
-    if let Some(decimal) = name.strip_prefix('#') {
-        return decimal
-            .parse::<u32>()
-            .ok()
-            .and_then(char::from_u32)
-            .map(|value| value.to_string());
-    }
-
-    match name {
-        "nbsp" => Some(" ".to_string()),
-        "lt" => Some("<".to_string()),
-        "gt" => Some(">".to_string()),
-        "amp" => Some("&".to_string()),
-        "quot" => Some("\"".to_string()),
-        "apos" | "#39" => Some("'".to_string()),
-        "bull" | "middot" => Some("*".to_string()),
-        "ndash" | "mdash" => Some("-".to_string()),
-        "hellip" => Some("...".to_string()),
-        _ => None,
-    }
-}
-
-fn normalize_terminal_text(text: &str, collapse_inline_whitespace: bool) -> String {
-    let normalized = text.replace("\r\n", "\n").replace('\r', "\n");
-    let mut lines = Vec::new();
-    let mut previous_blank = false;
-
-    for raw_line in normalized.split('\n') {
-        let line = clean_terminal_line(raw_line, collapse_inline_whitespace);
-
-        if line.trim().is_empty() {
-            if !lines.is_empty() && !previous_blank {
-                lines.push(String::new());
-                previous_blank = true;
-            }
-            continue;
-        }
-
-        lines.push(line);
-        previous_blank = false;
-    }
-
-    while lines.last().is_some_and(|line| line.is_empty()) {
-        lines.pop();
-    }
-
-    lines.join("\n")
-}
-
-fn clean_terminal_line(line: &str, collapse_inline_whitespace: bool) -> String {
-    let mut cleaned = String::with_capacity(line.len());
-    let mut last_was_space = false;
-
-    for ch in line.chars() {
-        match ch {
-            '\t' if collapse_inline_whitespace => {
-                if !last_was_space {
-                    cleaned.push(' ');
-                    last_was_space = true;
-                }
-            }
-            '\t' => {
-                cleaned.push_str("    ");
-                last_was_space = false;
-            }
-            '\u{00a0}' => {
-                if !last_was_space {
-                    cleaned.push(' ');
-                    last_was_space = true;
-                }
-            }
-            '\u{200b}' | '\u{200c}' | '\u{200d}' | '\u{feff}' => {}
-            _ if ch.is_control() => {}
-            _ if collapse_inline_whitespace && ch.is_whitespace() => {
-                if !last_was_space {
-                    cleaned.push(' ');
-                    last_was_space = true;
-                }
-            }
-            _ => {
-                cleaned.push(ch);
-                last_was_space = ch == ' ';
-            }
-        }
-    }
-
-    if collapse_inline_whitespace {
-        cleaned.trim().to_string()
-    } else {
-        cleaned.trim_end().to_string()
-    }
 }
 
 #[cfg(test)]

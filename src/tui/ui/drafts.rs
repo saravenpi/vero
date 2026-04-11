@@ -18,14 +18,13 @@ pub(crate) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         .margin(1)
         .split(area);
 
-    let title = format!(" ✦ Drafts ({}) ", app.drafts.len());
     let block = Block::default()
         .borders(Borders::NONE)
-        .title(Span::styled(title, Style::default().fg(PRIMARY_COLOR)));
+        .title(Span::styled(title(app), Style::default().fg(PRIMARY_COLOR)));
 
-    if app.drafts.is_empty() {
+    if app.drafts_visible_len() == 0 {
         frame.render_widget(
-            Paragraph::new("No drafts found")
+            Paragraph::new(empty_text(app))
                 .block(block)
                 .alignment(Alignment::Center),
             inner[0],
@@ -35,11 +34,12 @@ pub(crate) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
 
     let available_width = inner[0].width.saturating_sub(4) as usize;
     let items: Vec<ListItem> = app
-        .drafts
-        .iter()
+        .drafts_visible_indices()
+        .into_iter()
         .enumerate()
-        .map(|(index, (path, draft))| {
-            let is_selected = index == app.drafts_selected;
+        .map(|(visible_index, actual_index)| {
+            let (path, draft) = &app.drafts[actual_index];
+            let is_selected = visible_index == app.drafts_selected;
             let (bg_color, fg_color, modifier) = list::selection_style(is_selected);
             let subject_max = available_width.saturating_sub(35).max(20);
             let to_max = 30;
@@ -98,4 +98,25 @@ pub(crate) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         &mut app.drafts_selected,
         &mut app.drafts_list_offset,
     );
+}
+
+fn title(app: &App) -> String {
+    if app.drafts_search().is_active() {
+        return format!(
+            " ✦ Drafts ({}/{}) /{} ",
+            app.drafts_visible_len(),
+            app.drafts.len(),
+            app.drafts_search().display_query(),
+        );
+    }
+
+    format!(" ✦ Drafts ({}) ", app.drafts.len())
+}
+
+fn empty_text(app: &App) -> String {
+    if app.drafts_search().is_active() && !app.drafts.is_empty() {
+        return format!("No drafts match /{}", app.drafts_search().display_query());
+    }
+
+    "No drafts found".to_string()
 }
