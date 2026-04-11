@@ -4,7 +4,7 @@ use ratatui::{
 };
 
 use crate::tui::ui::quote::{classify_line, is_header, Kind};
-use crate::tui::ui::utils::sanitize_line;
+use crate::tui::ui::utils::{sanitize_line, sanitize_quoted_line};
 
 pub(super) fn plain(body: &str) -> Text<'static> {
     body.split('\n')
@@ -43,7 +43,7 @@ fn needs_separator(kind: Kind, prev: Kind) -> bool {
         Kind::Header => {
             !matches!(prev, Kind::Header | Kind::Attribution | Kind::Separator | Kind::Blank)
         }
-        Kind::Quoted => !matches!(prev, Kind::Quoted | Kind::Separator | Kind::Blank),
+        Kind::Quoted => !matches!(prev, Kind::Quoted | Kind::Attribution | Kind::Separator | Kind::Blank),
         _ => false,
     }
 }
@@ -56,25 +56,37 @@ fn render_line(kind: Kind, line: &str) -> Line<'static> {
             Style::default().add_modifier(Modifier::DIM | Modifier::ITALIC),
         )),
         Kind::Header => header(line),
-        Kind::Quoted => Line::from(Span::styled(
-            sanitize_line(line),
-            Style::default().add_modifier(Modifier::DIM),
-        )),
+        Kind::Quoted => {
+            let s = sanitize_quoted_line(line);
+            if s.trim().is_empty() {
+                Line::from("")
+            } else {
+                Line::from(Span::styled(s, Style::default().add_modifier(Modifier::DIM)))
+            }
+        }
         Kind::Blank => Line::from(""),
         Kind::Normal => Line::from(Span::raw(sanitize_line(line))),
     }
 }
 
 fn header(line: &str) -> Line<'static> {
-    let colon_pos = line.find(':').filter(|&p| is_header(&line[..=p]));
-    match colon_pos {
-        Some(p) => Line::from(vec![
+    let split = line
+        .find(" :")
+        .filter(|&p| is_header(&line[..p + 1]))
+        .map(|p| p + 2)
+        .or_else(|| {
+            line.find(':')
+                .filter(|&p| is_header(&line[..p + 1]))
+                .map(|p| p + 1)
+        });
+    match split {
+        Some(after) => Line::from(vec![
             Span::styled(
-                sanitize_line(&line[..=p]),
+                sanitize_line(line[..after].trim_end()),
                 Style::default().fg(Color::Cyan).add_modifier(Modifier::DIM),
             ),
-            Span::raw(" "),
-            Span::raw(sanitize_line(line[p + 1..].trim_start())),
+            Span::raw(": "),
+            Span::raw(sanitize_line(line[after..].trim_start())),
         ]),
         None => Line::from(Span::raw(sanitize_line(line))),
     }

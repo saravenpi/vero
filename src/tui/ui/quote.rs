@@ -1,6 +1,6 @@
 const HEADER_PREFIXES: &[&str] = &[
     "from:", "to:", "cc:", "subject:", "date:", "sent:",
-    "de :", "de:", "à :", "à:", "objet :", "objet:", "envoyé :", "envoyé:",
+    "de:", "à:", "pour:", "objet:", "sujet:", "envoyé:",
     "von:", "an:", "betreff:", "gesendet:",
 ];
 
@@ -62,7 +62,7 @@ fn is_on_wrote(lower: &str, lines: &[&str], index: usize) -> bool {
 }
 
 pub(super) fn is_header(trimmed: &str) -> bool {
-    let lower = trimmed.to_lowercase();
+    let lower = trimmed.to_lowercase().replace(" :", ":");
     HEADER_PREFIXES.iter().any(|p| lower.starts_with(p))
 }
 

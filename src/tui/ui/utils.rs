@@ -75,3 +75,29 @@ pub(crate) fn sanitize_line(raw: &str) -> String {
     }
     out
 }
+
+pub(crate) fn sanitize_quoted_line(raw: &str) -> String {
+    let line = raw.trim_end_matches('\r');
+
+    if is_mailto_only_line(line) {
+        return String::new();
+    }
+
+    let mut out = String::with_capacity(line.len());
+    for ch in line.chars() {
+        match ch {
+            '*' => {}
+            '\t' => out.push_str("    "),
+            _ if ch.is_control() => {}
+            _ => out.push(ch),
+        }
+    }
+    out
+}
+
+fn is_mailto_only_line(line: &str) -> bool {
+    line.trim()
+        .strip_prefix('<')
+        .and_then(|s| s.strip_suffix('>'))
+        .is_some_and(|inner| inner.starts_with("mailto:"))
+}
