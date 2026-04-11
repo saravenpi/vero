@@ -84,7 +84,7 @@ fn run_command(command: &str, args: &[String]) -> Result<()> {
 
 fn write_temp_email(email: &Email) -> Result<std::path::PathBuf> {
     let temp_file =
-        std::env::temp_dir().join(format!("vero_email_{}.txt", chrono::Utc::now().timestamp()));
+        std::env::temp_dir().join(format!("vero_email_{}.eml", chrono::Utc::now().timestamp()));
     let content = format_email(email);
 
     let mut file = fs::File::create(&temp_file).context("Failed to create temporary file")?;
