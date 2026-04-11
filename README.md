@@ -28,7 +28,9 @@ auto_refresh: 30
 inbox_view: all
 ```
 
-`editor` is only needed for TUI compose support.
+`editor` is used for compose and signatures.
+`viewer` is used for opening emails from the TUI.
+If either is missing, Vero falls back to `$EDITOR`.
 
 ## Run
 
@@ -73,7 +75,7 @@ Use `--json` when another tool or model should parse the output instead of eyeba
 - `r`: refresh
 - `d`: delete
 - `u` / `s` / `a`: unseen, seen, all
-- `e`: open in external viewer
+- `e`: open in `viewer` or `$EDITOR`
 
 ### List Search
 
@@ -96,6 +98,8 @@ body: Your message here
 ```
 
 Required fields: `to`, `subject`
+
+Compose and signature editing use `editor` or `$EDITOR`.
 
 ## Draft Format
 

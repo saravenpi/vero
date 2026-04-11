@@ -19,27 +19,29 @@ pub async fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
                 }
             }
             KeyCode::Char('e') => {
-                if let (Some(draft_path), Some(editor)) =
-                    (app.compose_draft_path.as_ref(), app.config.editor.as_ref())
-                {
-                    match open_editor_for_draft(editor, draft_path) {
-                        Ok(()) => {
-                            app.needs_full_redraw = true;
-                            match services::parse_draft_input(draft_path) {
-                                Ok(parsed) => {
-                                    app.compose_draft = parsed.to_draft();
-                                    app.error_message = None;
-                                    app.status_ttl = 0;
-                                }
-                                Err(error) => {
-                                    app.set_error(format!("Draft parsing error: {}", error));
+                if let Some(draft_path) = app.compose_draft_path.as_ref() {
+                    if let Some(editor) = app.config.editor_command() {
+                        match open_editor_for_draft(&editor, draft_path) {
+                            Ok(()) => {
+                                app.needs_full_redraw = true;
+                                match services::parse_draft_input(draft_path) {
+                                    Ok(parsed) => {
+                                        app.compose_draft = parsed.to_draft();
+                                        app.error_message = None;
+                                        app.status_ttl = 0;
+                                    }
+                                    Err(error) => {
+                                        app.set_error(format!("Draft parsing error: {}", error));
+                                    }
                                 }
                             }
+                            Err(error) => {
+                                app.needs_full_redraw = true;
+                                app.set_error(format!("Editor error: {}", error));
+                            }
                         }
-                        Err(error) => {
-                            app.needs_full_redraw = true;
-                            app.set_error(format!("Editor error: {}", error));
-                        }
+                    } else {
+                        app.set_error("No editor configured in ~/.vero.yml and $EDITOR is unset");
                     }
                 }
             }

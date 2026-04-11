@@ -53,10 +53,11 @@ pub(super) fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
         }
         KeyCode::Char('e') => {
             if let Some(email) = app.selected_inbox_email() {
-                let viewer = app.config.editor.as_ref().or(app.config.viewer.as_ref());
-                if let Some(viewer) = viewer {
-                    open_email_in_viewer(viewer, email)?;
+                if let Some(viewer) = app.config.viewer_command() {
+                    open_email_in_viewer(&viewer, email)?;
                     app.needs_full_redraw = true;
+                } else {
+                    app.set_error("No viewer configured in ~/.vero.yml and $EDITOR is unset");
                 }
             }
         }

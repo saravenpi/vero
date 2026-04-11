@@ -12,7 +12,7 @@ pub(super) fn handle_editor_open(app: &mut App) -> Result<()> {
 
     app.needs_editor_open = false;
 
-    let Some(editor) = app.config.editor.clone() else {
+    let Some(editor) = app.config.editor_command() else {
         app.compose_step = ComposeStep::NoEditor;
         return Ok(());
     };

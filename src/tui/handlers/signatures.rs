@@ -15,8 +15,8 @@ pub async fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
 
     match key.code {
         KeyCode::Char('e') => {
-            let Some(editor) = app.config.editor.clone() else {
-                app.set_error("No editor configured in ~/.vero.yml");
+            let Some(editor) = app.config.editor_command() else {
+                app.set_error("No editor configured in ~/.vero.yml and $EDITOR is unset");
                 return Ok(());
             };
             let Some(account) = app.current_account.as_ref() else {

@@ -20,14 +20,14 @@ pub(super) fn render(frame: &mut Frame, area: Rect) {
     let error_text = vec![
         Line::from(""),
         Line::from(Span::styled(
-            "No editor configured!",
+            "No editor available!",
             Style::default()
                 .fg(ERROR_COLOR)
                 .add_modifier(Modifier::BOLD),
         )),
         Line::from(""),
         Line::from(Span::styled(
-            "To compose emails, add an editor to ~/.vero.yml:",
+            "Set `editor` in ~/.vero.yml or export $EDITOR:",
             Style::default(),
         )),
         Line::from(""),
