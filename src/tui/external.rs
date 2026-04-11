@@ -99,13 +99,13 @@ fn format_email(email: &Email) -> String {
     let cc = email.cc.as_deref().unwrap_or("");
 
     format!(
-        "From: {}\nTo: {}\n{}Subject: {}\nDate: {}\n\n{}\n",
+        "from: {}\nto: {}\n{}subject: {}\ndate: {}\n\n{}\n",
         email.from,
         to,
         if cc.is_empty() {
             String::new()
         } else {
-            format!("CC: {}\n", cc)
+            format!("cc: {}\n", cc)
         },
         email.subject,
         email.date,
