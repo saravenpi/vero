@@ -21,7 +21,7 @@ impl App {
         self.inbox_emails = self
             .inbox_cached_emails
             .iter()
-            .filter(|email| matches_filter(email, self.inbox_filter))
+            .filter(|email| self.inbox_filter.matches(email))
             .cloned()
             .collect();
 
@@ -91,14 +91,6 @@ impl App {
 
         self.inbox_cached_emails.retain(|email| email.uid != uid);
         self.refresh_inbox_emails(selected_uid);
-    }
-}
-
-fn matches_filter(email: &Email, filter: InboxFilter) -> bool {
-    match filter {
-        InboxFilter::Unseen => !email.is_seen,
-        InboxFilter::Seen => email.is_seen,
-        InboxFilter::All => true,
     }
 }
 

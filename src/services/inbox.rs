@@ -12,11 +12,7 @@ impl InboxSnapshot {
     pub fn filtered_emails(&self, filter: InboxFilter) -> Vec<Email> {
         self.emails
             .iter()
-            .filter(|email| match filter {
-                InboxFilter::Unseen => !email.is_seen,
-                InboxFilter::Seen => email.is_seen,
-                InboxFilter::All => true,
-            })
+            .filter(|email| filter.matches(email))
             .cloned()
             .collect()
     }

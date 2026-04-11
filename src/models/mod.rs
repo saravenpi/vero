@@ -60,6 +60,14 @@ impl InboxFilter {
             _ => InboxFilter::All,
         }
     }
+
+    pub fn matches(self, email: &Email) -> bool {
+        match self {
+            InboxFilter::Unseen => !email.is_seen,
+            InboxFilter::Seen => email.is_seen,
+            InboxFilter::All => true,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default)]

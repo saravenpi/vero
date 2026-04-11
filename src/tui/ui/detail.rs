@@ -70,38 +70,7 @@ fn render_attachment_list(
         .margin(1)
         .split(area);
 
-    let (subject_text, has_empty_subject) = display_subject(email.subject.as_str());
-    let header_style = if has_empty_subject {
-        Style::default().add_modifier(Modifier::DIM)
-    } else {
-        Style::default().fg(PRIMARY_COLOR)
-    };
-    let unknown = String::from("Unknown");
-    let to = email.to.as_ref().unwrap_or(&unknown);
-    let header_text = vec![
-        Line::from(Span::styled(format!("{} ", subject_text), header_style)),
-        Line::from(vec![
-            Span::styled("From: ", Style::default().add_modifier(Modifier::DIM)),
-            Span::styled(&email.from, Style::default()),
-        ]),
-        Line::from(vec![
-            Span::styled("To: ", Style::default().add_modifier(Modifier::DIM)),
-            Span::styled(to, Style::default()),
-        ]),
-        Line::from(vec![
-            Span::styled("Date: ", Style::default().add_modifier(Modifier::DIM)),
-            Span::styled(&email.date, Style::default()),
-        ]),
-        Line::from(vec![
-            Span::styled("Attachments: ", Style::default().add_modifier(Modifier::DIM)),
-            Span::styled(
-                email.attachments.len().to_string(),
-                Style::default(),
-            ),
-        ]),
-    ];
-
-    frame.render_widget(Paragraph::new(header_text), sections[0]);
+    frame.render_widget(Paragraph::new(build_email_header(email)), sections[0]);
 
     let label = if email.attachments.is_empty() {
         "No attachments".to_string()
@@ -134,6 +103,41 @@ fn render_attachment_list(
     }
 
     frame.render_widget(Paragraph::new(lines), sections[2]);
+}
+
+fn build_email_header(email: &Email) -> Vec<Line<'_>> {
+    let (subject_text, has_empty_subject) = display_subject(email.subject.as_str());
+    let header_style = if has_empty_subject {
+        Style::default().add_modifier(Modifier::DIM)
+    } else {
+        Style::default().fg(PRIMARY_COLOR)
+    };
+    let to = email.to.as_deref().unwrap_or("Unknown");
+
+    let mut lines = vec![
+        Line::from(Span::styled(format!("{} ", subject_text), header_style)),
+        Line::from(vec![
+            Span::styled("From: ", Style::default().add_modifier(Modifier::DIM)),
+            Span::styled(email.from.as_str(), Style::default()),
+        ]),
+        Line::from(vec![
+            Span::styled("To: ", Style::default().add_modifier(Modifier::DIM)),
+            Span::styled(to, Style::default()),
+        ]),
+        Line::from(vec![
+            Span::styled("Date: ", Style::default().add_modifier(Modifier::DIM)),
+            Span::styled(email.date.as_str(), Style::default()),
+        ]),
+    ];
+
+    if !email.attachments.is_empty() {
+        lines.push(Line::from(vec![
+            Span::styled("Attachments: ", Style::default().add_modifier(Modifier::DIM)),
+            Span::styled(email.attachments.len().to_string(), Style::default()),
+        ]));
+    }
+
+    lines
 }
 
 fn format_size(bytes: i64) -> String {
@@ -171,41 +175,8 @@ fn render_email_detail(
     }
 
     let email = &emails[selected];
-    let (subject_text, has_empty_subject) = display_subject(email.subject.as_str());
-    let header_style = if has_empty_subject {
-        Style::default().add_modifier(Modifier::DIM)
-    } else {
-        Style::default().fg(PRIMARY_COLOR)
-    };
-    let unknown = String::from("Unknown");
-    let to = email.to.as_ref().unwrap_or(&unknown);
-    let mut header_text = vec![
-        Line::from(Span::styled(format!("{} ", subject_text), header_style)),
-        Line::from(vec![
-            Span::styled("From: ", Style::default().add_modifier(Modifier::DIM)),
-            Span::styled(&email.from, Style::default()),
-        ]),
-        Line::from(vec![
-            Span::styled("To: ", Style::default().add_modifier(Modifier::DIM)),
-            Span::styled(to, Style::default()),
-        ]),
-        Line::from(vec![
-            Span::styled("Date: ", Style::default().add_modifier(Modifier::DIM)),
-            Span::styled(&email.date, Style::default()),
-        ]),
-    ];
 
-    if !email.attachments.is_empty() {
-        header_text.push(Line::from(vec![
-            Span::styled("Attachments: ", Style::default().add_modifier(Modifier::DIM)),
-            Span::styled(
-                email.attachments.len().to_string(),
-                Style::default(),
-            ),
-        ]));
-    }
-
-    frame.render_widget(Paragraph::new(header_text), sections[0]);
+    frame.render_widget(Paragraph::new(build_email_header(email)), sections[0]);
 
     frame.render_widget(
         Paragraph::new("Body (j/k to scroll)").style(Style::default().add_modifier(Modifier::DIM)),

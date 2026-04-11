@@ -60,24 +60,30 @@ pub(super) fn extract_attachments_with_bytes(
     Ok(result)
 }
 
+fn attachment_identity(mail: &mailparse::ParsedMail) -> Option<(String, String)> {
+    let content_disposition = mail.headers.get_first_value("Content-Disposition");
+    if !is_attachment(content_disposition.as_deref()) {
+        return None;
+    }
+    let filename = content_disposition
+        .as_deref()
+        .and_then(extract_filename)
+        .unwrap_or_else(|| "unknown".to_string());
+    let content_type = mail.ctype.mimetype.to_ascii_lowercase();
+    Some((filename, content_type))
+}
+
 fn collect_attachment_bytes(
     mail: &mailparse::ParsedMail,
     result: &mut Vec<(Attachment, Vec<u8>)>,
 ) -> Result<()> {
-    let ctype = mail.ctype.mimetype.to_ascii_lowercase();
-    let content_disposition = mail.headers.get_first_value("Content-Disposition");
-
-    if is_attachment(content_disposition.as_deref()) {
-        let filename = content_disposition
-            .as_deref()
-            .and_then(extract_filename)
-            .unwrap_or_else(|| "unknown".to_string());
+    if let Some((filename, content_type)) = attachment_identity(mail) {
         let bytes = mail.get_body_raw()?;
         let size = bytes.len() as i64;
         result.push((
             Attachment {
                 filename,
-                content_type: ctype,
+                content_type,
                 size,
                 file_path: None,
             },
@@ -109,22 +115,15 @@ fn extract_parts(
     attachments: &mut Vec<Attachment>,
 ) -> Result<ExtractedBodies> {
     let ctype = mail.ctype.mimetype.to_ascii_lowercase();
-    let content_disposition = mail.headers.get_first_value("Content-Disposition");
 
-    if is_attachment(content_disposition.as_deref()) {
-        let filename = content_disposition
-            .as_deref()
-            .and_then(extract_filename)
-            .unwrap_or_else(|| "unknown".to_string());
+    if let Some((filename, content_type)) = attachment_identity(mail) {
         let size = mail.get_body_raw()?.len() as i64;
-
         attachments.push(Attachment {
             filename,
-            content_type: ctype,
+            content_type,
             size,
             file_path: None,
         });
-
         return Ok(ExtractedBodies::default());
     }
 
