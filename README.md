@@ -134,6 +134,11 @@ All files are human-readable `.eml` format.
 - `src/storage/`: local `.eml` persistence
 - `src/email/imap_client/`: IMAP fetch and body parsing
 
+## AI agent integration
+
+`install.sh` auto-registers vero as an AI agent skill for Claude Code and Codex.
+After installation, AI coding assistants can use vero commands directly when you ask about email.
+
 ## License
 
 AGPL-3.0
