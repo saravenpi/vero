@@ -34,6 +34,6 @@ pub async fn execute(config: VeroConfig, invocation: CliInvocation) -> Result<()
             send::execute(&config, output, account.as_deref(), command).await
         }
         CliCommand::Draft(command) => draft::execute(output, command),
-        CliCommand::Help | CliCommand::Version | CliCommand::Tui => Ok(()),
+        CliCommand::Help | CliCommand::Version | CliCommand::Tui | CliCommand::Upgrade => Ok(()),
     }
 }

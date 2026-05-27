@@ -70,6 +70,10 @@ pub fn parse(raw_args: Vec<String>) -> Result<CliInvocation> {
         Some("sent") => CliCommand::Sent(parse_sent(&mut args)?),
         Some("send") => CliCommand::Send(parse_send(&mut args)?),
         Some("draft") => CliCommand::Draft(parse_draft(&mut args)?),
+        Some("upgrade") => {
+            ensure_no_args(&args)?;
+            CliCommand::Upgrade
+        }
         Some(other) => return Err(anyhow!("Unknown command '{}'", other)),
         None => CliCommand::Tui,
     };

@@ -1,33 +1,25 @@
-#!/usr/bin/env bash
-set -e
+#!/bin/bash
+set -euo pipefail
 
-REPO="saravenpi/vero"
-INSTALL_DIR="$HOME/.local/bin"
-BINARY_NAME="vero"
+REPO="https://github.com/saravenpi/vero.git"
+BIN_NAME="vero"
 
-echo "🚀 Installing Vero email client..."
+info()  { printf '\033[1;36m%s\033[0m\n' "$*"; }
+error() { printf '\033[1;31merror:\033[0m %s\n' "$*" >&2; exit 1; }
 
-if ! command -v cargo &> /dev/null; then
-    echo "❌ Error: Rust/Cargo is not installed. Please install Rust first: https://rustup.rs/"
-    exit 1
-fi
+command -v cargo >/dev/null 2>&1 || error "cargo not found. Install Rust first: https://rustup.rs"
+command -v git   >/dev/null 2>&1 || error "git not found. Install git first."
 
-echo "✓ Cargo found: $(cargo --version)"
+TMPDIR="$(mktemp -d)"
+trap 'rm -rf "$TMPDIR"' EXIT
 
-if [ ! -d "$INSTALL_DIR" ]; then
-    echo "📁 Creating $INSTALL_DIR..."
-    mkdir -p "$INSTALL_DIR"
-fi
+info "Cloning $REPO..."
+git clone --depth 1 --quiet "$REPO" "$TMPDIR/vero"
 
-TEMP_DIR=$(mktemp -d)
-echo "📦 Using temporary directory: $TEMP_DIR"
+info "Building and installing $BIN_NAME..."
+cargo install --path "$TMPDIR/vero" --force --quiet
 
-cleanup() {
-    echo "🧹 Cleaning up temporary files..."
-    rm -rf "$TEMP_DIR"
-}
-trap cleanup EXIT
-
+# --- AI agent skill registration ---
 SKILL_MARKER_START="<!-- vero:start -->"
 SKILL_MARKER_END="<!-- vero:end -->"
 
@@ -71,53 +63,17 @@ register_skill() {
     mkdir -p "$skill_dir"
     cp "$skill_file" "$skill_dir/SKILL.md"
     inject_block "$HOME/.claude/CLAUDE.md" "$skill_content"
-    echo "  ✓ Claude Code skill registered"
+    info "  ✓ Claude Code skill registered"
   fi
 
   if command -v codex &>/dev/null; then
     mkdir -p "$HOME/.codex"
     inject_block "$HOME/.codex/AGENTS.md" "$skill_content"
-    echo "  ✓ Codex skill registered"
+    info "  ✓ Codex skill registered"
   fi
 }
 
-cd "$TEMP_DIR"
+register_skill "$TMPDIR/vero"
 
-echo "⬇️  Downloading Vero..."
-if command -v git &> /dev/null; then
-    git clone --depth 1 "https://github.com/$REPO.git" vero
-    cd vero
-else
-    curl -fsSL "https://github.com/$REPO/archive/refs/heads/master.tar.gz" | tar xz
-    cd vero-master
-fi
-
-REPO_DIR="$(pwd)"
-
-echo "🔨 Building Vero..."
-cargo build --release
-
-echo "📥 Installing to $INSTALL_DIR/$BINARY_NAME..."
-mv "target/release/$BINARY_NAME" "$INSTALL_DIR/$BINARY_NAME"
-chmod +x "$INSTALL_DIR/$BINARY_NAME"
-
-register_skill "$REPO_DIR"
-
-echo ""
-echo "✅ Vero installed successfully!"
-echo ""
-echo "📋 Next steps:"
-echo "  1. Ensure $INSTALL_DIR is in your PATH"
-echo "     Add this to your ~/.bashrc or ~/.zshrc:"
-echo "     export PATH=\"\$HOME/.local/bin:\$PATH\""
-echo ""
-echo "  2. Create configuration file at ~/.vero.yml"
-echo "     See: https://github.com/$REPO#configuration"
-echo ""
-echo "  3. Run: vero"
-echo ""
-
-if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
-    echo "⚠️  Warning: $INSTALL_DIR is not in your PATH"
-    echo "   Run: export PATH=\"\$HOME/.local/bin:\$PATH\""
-fi
+INSTALL_PATH="$(command -v "$BIN_NAME" 2>/dev/null || echo "$HOME/.cargo/bin/$BIN_NAME")"
+info "Installed $BIN_NAME to $INSTALL_PATH"

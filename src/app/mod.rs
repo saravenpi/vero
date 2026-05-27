@@ -17,6 +17,7 @@ pub async fn run(raw_args: Vec<String>) -> Result<()> {
             println!("Vero v{} (Rust)", VERSION);
             Ok(())
         }
+        CliCommand::Upgrade => upgrade(),
         CliCommand::Tui => {
             let config = VeroConfig::load().context("Failed to load config")?;
             crate::tui::run(config).await
@@ -26,4 +27,19 @@ pub async fn run(raw_args: Vec<String>) -> Result<()> {
             cli::execute(config, invocation).await
         }
     }
+}
+
+fn upgrade() -> Result<()> {
+    println!("Upgrading vero...");
+    let status = std::process::Command::new("cargo")
+        .args(["install", "--git", "https://github.com/saravenpi/vero.git", "--force", "--quiet"])
+        .status()
+        .context("Failed to run cargo install")?;
+
+    if status.success() {
+        println!("vero upgraded successfully");
+    } else {
+        anyhow::bail!("upgrade failed");
+    }
+    Ok(())
 }

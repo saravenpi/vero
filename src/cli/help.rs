@@ -18,6 +18,7 @@ Commands:
   send --to <addr> --subject <subj> Send an email from flags
   send --draft <path|->             Send an email from a draft file or stdin
   draft [template] [--output <p>]   Print or write a draft template
+  upgrade                           Upgrade to the latest version
   help                              Show this help
   version                           Show version information
 

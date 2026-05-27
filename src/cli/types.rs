@@ -25,6 +25,7 @@ pub enum CliCommand {
     Sent(SentCommand),
     Send(SendCommand),
     Draft(DraftCommand),
+    Upgrade,
 }
 
 #[derive(Debug, Clone)]

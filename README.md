@@ -4,8 +4,14 @@ Terminal email client in Rust with TUI and CLI workflows. Everything is a file.
 
 ## Install
 
-```bash
-cargo install --path .
+```sh
+curl -fsSL https://raw.githubusercontent.com/saravenpi/vero/master/install.sh | bash
+```
+
+### Update
+
+```sh
+vero upgrade
 ```
 
 ## Configure
